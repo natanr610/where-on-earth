@@ -1,0 +1,854 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#12283A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Where on Earth?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+  :root {
+    --ink: #12283A;
+    --paper: #EEF3F1;
+    --guess: #E4572E;
+    --real: #1F9E6E;
+    --accent: #F2A33A;
+
+    --bg: var(--paper);
+    --fg: var(--ink);
+    --surface: rgba(238, 243, 241, 0.94);
+    --surface-solid: #ffffff;
+    --muted: #4f6474;
+    --line: rgba(18, 40, 58, 0.14);
+    --shadow: 0 10px 30px rgba(18, 40, 58, 0.22);
+    --btn-fg: var(--ink);
+    --track: rgba(18, 40, 58, 0.12);
+
+    --safe-t: env(safe-area-inset-top, 0px);
+    --safe-r: env(safe-area-inset-right, 0px);
+    --safe-b: env(safe-area-inset-bottom, 0px);
+    --safe-l: env(safe-area-inset-left, 0px);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: var(--ink);
+      --fg: var(--paper);
+      --surface: rgba(18, 40, 58, 0.94);
+      --surface-solid: #1a3449;
+      --muted: #a7b9c4;
+      --line: rgba(238, 243, 241, 0.16);
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      --track: rgba(238, 243, 241, 0.14);
+    }
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; height: 100%; overflow: hidden;
+    background: var(--bg); color: var(--fg);
+    font-family: "Atkinson Hyperlegible", system-ui, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+  }
+  h1, h2, h3, .display {
+    font-family: "Bricolage Grotesque", system-ui, sans-serif;
+    letter-spacing: -0.02em; margin: 0;
+  }
+  button {
+    font: inherit; font-weight: 700; cursor: pointer;
+    border: 0; border-radius: 999px; padding: 0.7em 1.2em;
+    min-height: 44px; color: var(--btn-fg); background: var(--accent);
+    transition: transform .12s ease, opacity .2s ease, background .2s ease;
+  }
+  button:active:not(:disabled) { transform: scale(0.97); }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  button.ghost {
+    background: var(--surface); color: var(--fg);
+    border: 1px solid var(--line);
+  }
+  .hidden { display: none !important; }
+
+  /* Street View */
+  #sv-wrap { position: fixed; inset: 0; overflow: hidden; background: #0c1a26; }
+  #sv {
+    position: absolute; left: 0; top: -70px;
+    width: 100%; height: calc(100% + 70px); border: 0;
+  }
+
+  /* HUD */
+  #hud {
+    position: fixed; z-index: 500;
+    top: calc(var(--safe-t) + 12px); left: calc(var(--safe-l) + 12px);
+    display: flex; flex-direction: column; gap: 8px; align-items: flex-start;
+    max-width: calc(100vw - var(--safe-l) - var(--safe-r) - 24px);
+  }
+  .hud-stats {
+    display: flex; gap: 14px; align-items: baseline;
+    background: var(--surface); color: var(--fg);
+    padding: 8px 14px; border-radius: 14px; box-shadow: var(--shadow);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  }
+  .hud-stats .label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); display: block; }
+  .hud-stats .val { font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; font-size: 1.25rem; }
+  .hud-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .hud-actions button { font-size: 0.85rem; padding: 0.5em 0.95em; min-height: 38px; box-shadow: var(--shadow); }
+
+  /* Guess panel */
+  #guess-panel {
+    position: fixed; z-index: 600;
+    right: calc(var(--safe-r) + 16px); bottom: calc(var(--safe-b) + 16px);
+    display: flex; flex-direction: column; gap: 10px; align-items: stretch;
+    width: 320px;
+    transition: width .25s ease;
+  }
+  #guess-map {
+    width: 100%; height: 210px; border-radius: 16px; overflow: hidden;
+    box-shadow: var(--shadow); border: 2px solid var(--surface);
+    transition: height .25s ease; opacity: .85;
+  }
+  @media (hover: hover) and (min-width: 700px) {
+    #guess-panel:hover { width: min(620px, 55vw); }
+    #guess-panel:hover #guess-map { height: min(440px, 55vh); opacity: 1; }
+  }
+  .guess-controls { display: flex; gap: 8px; }
+  .guess-controls button { flex: 1; box-shadow: var(--shadow); }
+  #map-toggle { display: none; }
+
+  @media (max-width: 699px), (hover: none) {
+    #guess-panel {
+      left: calc(var(--safe-l) + 12px); right: calc(var(--safe-r) + 12px);
+      bottom: calc(var(--safe-b) + 12px); width: auto;
+    }
+    #guess-map { display: none; height: min(58dvh, 480px); opacity: 1; }
+    #guess-panel.open #guess-map { display: block; }
+    #map-toggle { display: block; }
+  }
+
+  /* Pins */
+  .pin {
+    width: 26px; height: 26px; border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg); border: 3px solid #fff;
+    box-shadow: 0 3px 8px rgba(0,0,0,.35);
+  }
+  .pin::after {
+    content: ""; position: absolute; width: 8px; height: 8px; border-radius: 50%;
+    background: #fff; left: 6px; top: 6px;
+  }
+  .pin.guess { background: var(--guess); }
+  .pin.real { background: var(--real); }
+
+  /* Overlays */
+  .overlay {
+    position: fixed; inset: 0; z-index: 900;
+    background: var(--bg); color: var(--fg);
+    display: flex; flex-direction: column;
+  }
+  .center-screen {
+    align-items: center; justify-content: center; text-align: center;
+    padding: calc(var(--safe-t) + 24px) calc(var(--safe-r) + 20px) calc(var(--safe-b) + 24px) calc(var(--safe-l) + 20px);
+    overflow-y: auto;
+  }
+  #start h1 { font-size: clamp(2.6rem, 10vw, 5.2rem); font-weight: 800; line-height: .95; }
+  #start h1 span { color: var(--accent); }
+  #start p { font-size: 1.15rem; color: var(--muted); max-width: 30em; margin: 18px auto 28px; line-height: 1.45; }
+  #start button { font-size: 1.15rem; padding: .85em 2em; }
+  .globe {
+    width: 88px; height: 88px; margin: 0 auto 22px; border-radius: 50%;
+    background:
+      radial-gradient(circle at 35% 35%, rgba(255,255,255,.35), transparent 45%),
+      radial-gradient(circle at 60% 60%, var(--real) 0 22%, transparent 23%),
+      radial-gradient(circle at 30% 70%, var(--real) 0 12%, transparent 13%),
+      radial-gradient(circle at 70% 25%, var(--real) 0 14%, transparent 15%),
+      #2a6f97;
+    box-shadow: inset -10px -10px 0 rgba(0,0,0,.15), var(--shadow);
+    position: relative;
+  }
+  .globe::after {
+    content: ""; position: absolute; width: 22px; height: 22px; right: -4px; top: -4px;
+    border-radius: 50% 50% 50% 0; transform: rotate(-45deg);
+    background: var(--guess); border: 3px solid var(--bg);
+  }
+
+  #result-map { flex: 1; min-height: 0; }
+  .result-card {
+    position: absolute; z-index: 1000;
+    left: 50%; transform: translateX(-50%);
+    bottom: calc(var(--safe-b) + 16px);
+    width: min(520px, calc(100vw - var(--safe-l) - var(--safe-r) - 24px));
+    background: var(--surface); color: var(--fg);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border-radius: 20px; padding: 18px 20px; box-shadow: var(--shadow);
+  }
+  .result-card .points { font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; font-size: 2.2rem; line-height: 1; }
+  .result-card .points small { font-size: 1rem; font-weight: 600; color: var(--muted); }
+  .result-card .place { font-size: 1.1rem; margin-top: 6px; }
+  .result-card .place b { color: var(--real); }
+  .result-card .dist { color: var(--muted); margin-top: 2px; }
+  .legend { display: flex; gap: 14px; font-size: .85rem; color: var(--muted); margin-top: 8px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
+  .bar { height: 10px; border-radius: 99px; background: var(--track); overflow: hidden; margin: 12px 0 14px; }
+  .bar > div { height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, var(--accent), var(--real)); transition: width .9s cubic-bezier(.2,.8,.2,1); }
+  .result-card button { width: 100%; }
+
+  #final .wrap { width: min(560px, 100%); }
+  #final .eyebrow { text-transform: uppercase; letter-spacing: .12em; font-size: .8rem; color: var(--muted); }
+  #final .total { font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; font-size: clamp(3rem, 14vw, 4.6rem); line-height: 1; margin: 6px 0 2px; }
+  #final .total small { font-size: .35em; color: var(--muted); font-weight: 600; }
+  #final .verdict { font-size: 1.35rem; color: var(--accent); font-family: "Bricolage Grotesque", sans-serif; font-weight: 700; margin: 6px 0 20px; }
+  table { width: 100%; border-collapse: collapse; text-align: left; margin-bottom: 24px; font-size: .95rem; }
+  th, td { padding: 10px 6px; border-bottom: 1px solid var(--line); }
+  th { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  td.pts { font-weight: 700; }
+  #final button { font-size: 1.1rem; padding: .8em 2em; }
+
+  .leaflet-container { background: var(--bg); font-family: "Atkinson Hyperlegible", sans-serif; }
+  .leaflet-container a { color: inherit; }
+  @media (prefers-color-scheme: dark) {
+    .leaflet-control-attribution { background: rgba(18,40,58,.8) !important; color: #c9d6dd; }
+    .leaflet-bar a { background: #1a3449; color: var(--paper); border-color: rgba(255,255,255,.12); }
+  }
+</style>
+</head>
+<body>
+
+<div id="sv-wrap">
+  <iframe id="sv" title="Street View" allow="accelerometer; gyroscope; fullscreen" referrerpolicy="no-referrer-when-downgrade"></iframe>
+</div>
+
+<div id="hud" class="hidden">
+  <div class="hud-stats">
+    <div><span class="label">Round</span><span class="val" id="hud-round">1/5</span></div>
+    <div><span class="label">Score</span><span class="val" id="hud-score">0</span></div>
+  </div>
+  <div class="hud-actions">
+    <button class="ghost" id="btn-back" title="Return to where this round started">Back to start</button>
+    <button class="ghost" id="btn-skip" title="No imagery? Get a different location">Skip location</button>
+  </div>
+</div>
+
+<div id="guess-panel" class="hidden">
+  <div id="guess-map"></div>
+  <div class="guess-controls">
+    <button class="ghost" id="map-toggle">Open map</button>
+    <button id="btn-guess" disabled>Guess</button>
+  </div>
+</div>
+
+<section id="start" class="overlay center-screen">
+  <div class="globe" aria-hidden="true"></div>
+  <h1>Where on <span>Earth?</span></h1>
+  <p>You're dropped somewhere on the planet. Look around, then pin your guess on the map — the closer you are, the more points you score.</p>
+  <button id="btn-start">Start game</button>
+</section>
+
+<section id="result" class="overlay hidden">
+  <div id="result-map"></div>
+  <div class="result-card">
+    <div class="points"><span id="res-points">0</span> <small>points</small></div>
+    <div class="place">It was <b id="res-place"></b></div>
+    <div class="dist" id="res-dist"></div>
+    <div class="legend"><span><i style="background:var(--guess)"></i>Your guess</span><span><i style="background:var(--real)"></i>Actual location</span></div>
+    <div class="bar"><div id="res-bar"></div></div>
+    <button id="btn-next">Next round</button>
+  </div>
+</section>
+
+<section id="final" class="overlay center-screen hidden">
+  <div class="wrap">
+    <div class="eyebrow">Final score</div>
+    <div class="total"><span id="final-total">0</span> <small>/ 25,000</small></div>
+    <div class="verdict" id="final-verdict"></div>
+    <table>
+      <thead><tr><th>#</th><th>Place</th><th class="num">Distance</th><th class="num">Points</th></tr></thead>
+      <tbody id="final-rows"></tbody>
+    </table>
+    <button id="btn-again">Play again</button>
+  </div>
+</section>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+(() => {
+  "use strict";
+
+  // [place, lat, lng] — street-level spots in countries with Street View coverage
+  const LOCATIONS = [
+    // North America
+    ["New York City, USA", 40.7580, -73.9855],
+    ["San Francisco, USA", 37.7955, -122.4064],
+    ["Chicago, USA", 41.8837, -87.6278],
+    ["New Orleans, USA", 29.9584, -90.0644],
+    ["Seattle, USA", 47.6097, -122.3422],
+    ["Boston, USA", 42.3555, -71.0605],
+    ["Austin, USA", 30.2672, -97.7431],
+    ["Savannah, USA", 32.0809, -81.0912],
+    ["Santa Fe, USA", 35.6870, -105.9378],
+    ["Key West, USA", 24.5551, -81.8001],
+    ["Honolulu, USA", 21.2766, -157.8270],
+    ["Anchorage, USA", 61.2176, -149.8953],
+    ["Juneau, USA", 58.3005, -134.4116],
+    ["Denver, USA", 39.7478, -104.9994],
+    ["Nashville, USA", 36.1612, -86.7785],
+    ["Portland, Maine, USA", 43.6567, -70.2560],
+    ["Las Vegas, USA", 36.1147, -115.1728],
+    ["Miami Beach, USA", 25.7826, -80.1341],
+    ["Charleston, USA", 32.7765, -79.9311],
+    ["Washington, D.C., USA", 38.8973, -77.0280],
+    ["Philadelphia, USA", 39.9496, -75.1503],
+    ["Los Angeles, USA", 34.1016, -118.3267],
+    ["San Diego, USA", 32.7116, -117.1600],
+    ["Salt Lake City, USA", 40.7690, -111.8910],
+    ["Minneapolis, USA", 44.9765, -93.2717],
+    ["Memphis, USA", 35.1393, -90.0525],
+    ["Atlanta, USA", 33.7590, -84.3880],
+    ["Toronto, Canada", 43.6532, -79.3832],
+    ["Montreal, Canada", 45.5048, -73.5540],
+    ["Quebec City, Canada", 46.8123, -71.2029],
+    ["Vancouver, Canada", 49.2844, -123.1089],
+    ["Victoria, Canada", 48.4284, -123.3656],
+    ["Halifax, Canada", 44.6488, -63.5752],
+    ["Banff, Canada", 51.1764, -115.5698],
+    ["Calgary, Canada", 51.0450, -114.0650],
+    ["Ottawa, Canada", 45.4220, -75.6970],
+    ["Winnipeg, Canada", 49.8951, -97.1384],
+    ["St. John's, Canada", 47.5615, -52.7126],
+    ["Whitehorse, Canada", 60.7212, -135.0568],
+    ["Mexico City, Mexico", 19.4342, -99.1386],
+    ["Oaxaca, Mexico", 17.0654, -96.7237],
+    ["Guanajuato, Mexico", 21.0170, -101.2550],
+    ["San Miguel de Allende, Mexico", 20.9144, -100.7452],
+    ["Mérida, Mexico", 20.9674, -89.6237],
+    ["Guadalajara, Mexico", 20.6767, -103.3475],
+    ["Puerto Vallarta, Mexico", 20.6097, -105.2352],
+    ["Monterrey, Mexico", 25.6714, -100.3090],
+    ["Tulum, Mexico", 20.2114, -87.4654],
+    ["Antigua, Guatemala", 14.5586, -90.7295],
+    ["San Juan, Puerto Rico", 18.4655, -66.1166],
+    ["Santo Domingo, Dominican Republic", 18.4733, -69.8830],
+
+    // South America
+    ["Buenos Aires, Argentina", -34.6037, -58.3816],
+    ["Mendoza, Argentina", -32.8895, -68.8458],
+    ["Ushuaia, Argentina", -54.8069, -68.3073],
+    ["Bariloche, Argentina", -41.1335, -71.3103],
+    ["Salta, Argentina", -24.7883, -65.4106],
+    ["Córdoba, Argentina", -31.4201, -64.1888],
+    ["Santiago, Chile", -33.4372, -70.6506],
+    ["Valparaíso, Chile", -33.0458, -71.6197],
+    ["Punta Arenas, Chile", -53.1638, -70.9171],
+    ["La Serena, Chile", -29.9027, -71.2519],
+    ["Montevideo, Uruguay", -34.9065, -56.1995],
+    ["Colonia del Sacramento, Uruguay", -34.4719, -57.8513],
+    ["Lima, Peru", -12.1211, -77.0297],
+    ["Cusco, Peru", -13.5167, -71.9781],
+    ["Arequipa, Peru", -16.3989, -71.5370],
+    ["La Paz, Bolivia", -16.4955, -68.1336],
+    ["Quito, Ecuador", -0.2200, -78.5120],
+    ["Cuenca, Ecuador", -2.8974, -79.0045],
+    ["Bogotá, Colombia", 4.5981, -74.0760],
+    ["Medellín, Colombia", 6.2088, -75.5670],
+    ["Cartagena, Colombia", 10.4236, -75.5503],
+    ["Rio de Janeiro, Brazil", -22.9711, -43.1863],
+    ["São Paulo, Brazil", -23.5614, -46.6559],
+    ["Salvador, Brazil", -12.9716, -38.5101],
+    ["Florianópolis, Brazil", -27.5954, -48.5480],
+    ["Curitiba, Brazil", -25.4284, -49.2733],
+    ["Paraty, Brazil", -23.2178, -44.7131],
+    ["Manaus, Brazil", -3.1300, -60.0230],
+
+    // Europe
+    ["Bergen, Norway", 60.3975, 5.3235],
+    ["Oslo, Norway", 59.9127, 10.7420],
+    ["Tromsø, Norway", 69.6492, 18.9553],
+    ["Stavanger, Norway", 58.9700, 5.7331],
+    ["Stockholm, Sweden", 59.3251, 18.0711],
+    ["Gothenburg, Sweden", 57.7047, 11.9668],
+    ["Malmö, Sweden", 55.6050, 13.0000],
+    ["Copenhagen, Denmark", 55.6795, 12.5900],
+    ["Aarhus, Denmark", 56.1567, 10.2108],
+    ["Helsinki, Finland", 60.1683, 24.9414],
+    ["Turku, Finland", 60.4518, 22.2666],
+    ["Reykjavík, Iceland", 64.1455, -21.9290],
+    ["Akureyri, Iceland", 65.6835, -18.0878],
+    ["Tallinn, Estonia", 59.4370, 24.7454],
+    ["Riga, Latvia", 56.9496, 24.1052],
+    ["Vilnius, Lithuania", 54.6822, 25.2878],
+    ["London, UK", 51.5099, -0.1337],
+    ["Edinburgh, UK", 55.9502, -3.1880],
+    ["York, UK", 53.9594, -1.0804],
+    ["Bath, UK", 51.3811, -2.3590],
+    ["Oxford, UK", 51.7520, -1.2577],
+    ["Manchester, UK", 53.4794, -2.2453],
+    ["Liverpool, UK", 53.4055, -2.9900],
+    ["Brighton, UK", 50.8225, -0.1372],
+    ["Inverness, UK", 57.4778, -4.2247],
+    ["Belfast, UK", 54.5965, -5.9300],
+    ["Cardiff, UK", 51.4816, -3.1791],
+    ["Dublin, Ireland", 53.3454, -6.2645],
+    ["Galway, Ireland", 53.2724, -9.0510],
+    ["Cork, Ireland", 51.8985, -8.4756],
+    ["Paris, France", 48.8580, 2.3500],
+    ["Lyon, France", 45.7620, 4.8270],
+    ["Nice, France", 43.6955, 7.2650],
+    ["Bordeaux, France", 44.8412, -0.5700],
+    ["Strasbourg, France", 48.5818, 7.7510],
+    ["Annecy, France", 45.8992, 6.1294],
+    ["Toulouse, France", 43.6045, 1.4440],
+    ["Marseille, France", 43.2951, 5.3740],
+    ["Amsterdam, Netherlands", 52.3728, 4.8936],
+    ["Rotterdam, Netherlands", 51.9200, 4.4800],
+    ["Bruges, Belgium", 51.2093, 3.2247],
+    ["Ghent, Belgium", 51.0543, 3.7174],
+    ["Brussels, Belgium", 50.8467, 4.3525],
+    ["Luxembourg City, Luxembourg", 49.6116, 6.1319],
+    ["Berlin, Germany", 52.5170, 13.3889],
+    ["Munich, Germany", 48.1374, 11.5755],
+    ["Hamburg, Germany", 53.5507, 9.9930],
+    ["Cologne, Germany", 50.9400, 6.9570],
+    ["Heidelberg, Germany", 49.4106, 8.7067],
+    ["Rothenburg ob der Tauber, Germany", 49.3772, 10.1786],
+    ["Vienna, Austria", 48.2087, 16.3700],
+    ["Salzburg, Austria", 47.8000, 13.0435],
+    ["Hallstatt, Austria", 47.5622, 13.6493],
+    ["Innsbruck, Austria", 47.2683, 11.3933],
+    ["Zurich, Switzerland", 47.3725, 8.5393],
+    ["Lucerne, Switzerland", 47.0502, 8.3093],
+    ["Zermatt, Switzerland", 46.0207, 7.7491],
+    ["Geneva, Switzerland", 46.2040, 6.1460],
+    ["Bern, Switzerland", 46.9480, 7.4474],
+    ["Prague, Czechia", 50.0875, 14.4213],
+    ["Český Krumlov, Czechia", 48.8109, 14.3152],
+    ["Kraków, Poland", 50.0614, 19.9366],
+    ["Warsaw, Poland", 52.2497, 21.0122],
+    ["Gdańsk, Poland", 54.3489, 18.6530],
+    ["Budapest, Hungary", 47.4969, 19.0510],
+    ["Ljubljana, Slovenia", 46.0511, 14.5060],
+    ["Bratislava, Slovakia", 48.1430, 17.1077],
+    ["Zagreb, Croatia", 45.8131, 15.9772],
+    ["Dubrovnik, Croatia", 42.6411, 18.1086],
+    ["Split, Croatia", 43.5081, 16.4402],
+    ["Kotor, Montenegro", 42.4247, 18.7712],
+    ["Mostar, Bosnia and Herzegovina", 43.3373, 17.8150],
+    ["Sarajevo, Bosnia and Herzegovina", 43.8590, 18.4310],
+    ["Belgrade, Serbia", 44.8176, 20.4569],
+    ["Ohrid, North Macedonia", 41.1123, 20.8016],
+    ["Tirana, Albania", 41.3275, 19.8187],
+    ["Sofia, Bulgaria", 42.6935, 23.3209],
+    ["Plovdiv, Bulgaria", 42.1500, 24.7500],
+    ["Bucharest, Romania", 44.4313, 26.1000],
+    ["Brașov, Romania", 45.6427, 25.5887],
+    ["Cluj-Napoca, Romania", 46.7700, 23.5900],
+    ["Athens, Greece", 37.9755, 23.7348],
+    ["Thessaloniki, Greece", 40.6326, 22.9410],
+    ["Oia, Santorini, Greece", 36.4618, 25.3753],
+    ["Chania, Greece", 35.5170, 24.0180],
+    ["Rhodes, Greece", 36.4440, 28.2270],
+    ["Rome, Italy", 41.9010, 12.4833],
+    ["Florence, Italy", 43.7696, 11.2558],
+    ["Venice, Italy", 45.4380, 12.3358],
+    ["Naples, Italy", 40.8484, 14.2560],
+    ["Milan, Italy", 45.4655, 9.1900],
+    ["Bologna, Italy", 44.4939, 11.3426],
+    ["Verona, Italy", 45.4420, 10.9980],
+    ["Siena, Italy", 43.3186, 11.3316],
+    ["Sorrento, Italy", 40.6263, 14.3757],
+    ["Palermo, Italy", 38.1157, 13.3615],
+    ["Valletta, Malta", 35.8989, 14.5146],
+    ["Barcelona, Spain", 41.3809, 2.1734],
+    ["Madrid, Spain", 40.4168, -3.7038],
+    ["Seville, Spain", 37.3861, -5.9926],
+    ["Granada, Spain", 37.1773, -3.5986],
+    ["San Sebastián, Spain", 43.3224, -1.9839],
+    ["Valencia, Spain", 39.4740, -0.3760],
+    ["Bilbao, Spain", 43.2590, -2.9230],
+    ["Toledo, Spain", 39.8570, -4.0230],
+    ["Ronda, Spain", 36.7423, -5.1671],
+    ["Palma de Mallorca, Spain", 39.5696, 2.6502],
+    ["Lisbon, Portugal", 38.7105, -9.1370],
+    ["Porto, Portugal", 41.1407, -8.6129],
+    ["Coimbra, Portugal", 40.2090, -8.4290],
+    ["Faro, Portugal", 37.0170, -7.9350],
+    ["Funchal, Madeira, Portugal", 32.6480, -16.9080],
+    ["Istanbul, Turkey", 41.0335, 28.9777],
+    ["Göreme, Turkey", 38.6431, 34.8289],
+    ["Antalya, Turkey", 36.8841, 30.7056],
+    ["İzmir, Turkey", 38.4192, 27.1287],
+    ["Kyiv, Ukraine", 50.4473, 30.5225],
+    ["Lviv, Ukraine", 49.8419, 24.0315],
+    ["Odesa, Ukraine", 46.4846, 30.7326],
+
+    // Middle East
+    ["Jerusalem, Israel", 31.7820, 35.2190],
+    ["Tel Aviv, Israel", 32.0770, 34.7745],
+    ["Haifa, Israel", 32.8190, 34.9880],
+    ["Acre, Israel", 32.9230, 35.0700],
+    ["Eilat, Israel", 29.5577, 34.9519],
+    ["Amman, Jordan", 31.9505, 35.9255],
+    ["Aqaba, Jordan", 29.5266, 35.0064],
+    ["Beirut, Lebanon", 33.8963, 35.4823],
+    ["Dubai, UAE", 25.2048, 55.2708],
+    ["Abu Dhabi, UAE", 24.4539, 54.3773],
+    ["Doha, Qatar", 25.2948, 51.5310],
+
+    // Asia
+    ["Tokyo, Japan", 35.6595, 139.7005],
+    ["Kyoto, Japan", 35.0030, 135.7750],
+    ["Osaka, Japan", 34.6687, 135.5013],
+    ["Sapporo, Japan", 43.0560, 141.3534],
+    ["Nara, Japan", 34.6851, 135.8430],
+    ["Hiroshima, Japan", 34.3916, 132.4529],
+    ["Fukuoka, Japan", 33.5902, 130.4017],
+    ["Kanazawa, Japan", 36.5626, 136.6540],
+    ["Takayama, Japan", 36.1408, 137.2595],
+    ["Kamakura, Japan", 35.3192, 139.5467],
+    ["Naha, Okinawa, Japan", 26.2155, 127.6855],
+    ["Seoul, South Korea", 37.5740, 126.9850],
+    ["Busan, South Korea", 35.1587, 129.1604],
+    ["Jeju City, South Korea", 33.4996, 126.5312],
+    ["Taipei, Taiwan", 25.0421, 121.5079],
+    ["Tainan, Taiwan", 22.9970, 120.2020],
+    ["Kaohsiung, Taiwan", 22.6273, 120.3014],
+    ["Hong Kong", 22.3027, 114.1719],
+    ["Macau", 22.1937, 113.5390],
+    ["Singapore", 1.3048, 103.8318],
+    ["Kuala Lumpur, Malaysia", 3.1466, 101.6958],
+    ["George Town, Malaysia", 5.4150, 100.3380],
+    ["Malacca, Malaysia", 2.1940, 102.2485],
+    ["Ipoh, Malaysia", 4.5975, 101.0901],
+    ["Kota Kinabalu, Malaysia", 5.9804, 116.0735],
+    ["Bangkok, Thailand", 13.7590, 100.4975],
+    ["Chiang Mai, Thailand", 18.7877, 98.9931],
+    ["Phuket Town, Thailand", 7.8846, 98.3881],
+    ["Pattaya, Thailand", 12.9276, 100.8770],
+    ["Siem Reap, Cambodia", 13.3550, 103.8550],
+    ["Phnom Penh, Cambodia", 11.5640, 104.9282],
+    ["Luang Prabang, Laos", 19.8880, 102.1370],
+    ["Hanoi, Vietnam", 21.0340, 105.8500],
+    ["Ho Chi Minh City, Vietnam", 10.7735, 106.7035],
+    ["Hội An, Vietnam", 15.8775, 108.3270],
+    ["Manila, Philippines", 14.5547, 121.0244],
+    ["Cebu City, Philippines", 10.2950, 123.9020],
+    ["Davao, Philippines", 7.0731, 125.6128],
+    ["Jakarta, Indonesia", -6.1944, 106.8229],
+    ["Ubud, Bali, Indonesia", -8.5069, 115.2625],
+    ["Yogyakarta, Indonesia", -7.7930, 110.3657],
+    ["Mumbai, India", 18.9210, 72.8320],
+    ["New Delhi, India", 28.6315, 77.2167],
+    ["Bengaluru, India", 12.9756, 77.6066],
+    ["Jaipur, India", 26.9239, 75.8267],
+    ["Udaipur, India", 24.5760, 73.6830],
+    ["Kochi, India", 9.9658, 76.2422],
+    ["Colombo, Sri Lanka", 6.9350, 79.8480],
+    ["Kandy, Sri Lanka", 7.2936, 80.6350],
+    ["Galle, Sri Lanka", 6.0260, 80.2170],
+    ["Ulaanbaatar, Mongolia", 47.9186, 106.9176],
+    ["Bishkek, Kyrgyzstan", 42.8746, 74.6122],
+    ["Almaty, Kazakhstan", 43.2610, 76.9450],
+    ["Astana, Kazakhstan", 51.1280, 71.4300],
+
+    // Africa
+    ["Cape Town, South Africa", -33.9222, 18.4186],
+    ["Johannesburg, South Africa", -26.2044, 28.0590],
+    ["Durban, South Africa", -29.8580, 31.0390],
+    ["Stellenbosch, South Africa", -33.9366, 18.8610],
+    ["Franschhoek, South Africa", -33.9122, 19.1210],
+    ["Gqeberha, South Africa", -33.9608, 25.6022],
+    ["Pretoria, South Africa", -25.7461, 28.1881],
+    ["Knysna, South Africa", -34.0363, 23.0471],
+    ["Bloemfontein, South Africa", -29.1180, 26.2140],
+    ["Gaborone, Botswana", -24.6580, 25.9120],
+    ["Maun, Botswana", -19.9833, 23.4167],
+    ["Maseru, Lesotho", -29.3100, 27.4800],
+    ["Mbabane, Eswatini", -26.3167, 31.1333],
+    ["Nairobi, Kenya", -1.2850, 36.8200],
+    ["Mombasa, Kenya", -4.0435, 39.6682],
+    ["Kampala, Uganda", 0.3136, 32.5811],
+    ["Kigali, Rwanda", -1.9441, 30.0619],
+    ["Accra, Ghana", 5.5560, -0.1820],
+    ["Kumasi, Ghana", 6.6885, -1.6244],
+    ["Cape Coast, Ghana", 5.1053, -1.2466],
+    ["Lagos, Nigeria", 6.4281, 3.4219],
+    ["Abuja, Nigeria", 9.0765, 7.3986],
+    ["Dakar, Senegal", 14.6700, -17.4380],
+    ["Tunis, Tunisia", 36.7998, 10.1835],
+    ["Sidi Bou Said, Tunisia", 36.8700, 10.3410],
+    ["Antananarivo, Madagascar", -18.9100, 47.5250],
+    ["Saint-Denis, Réunion", -20.8789, 55.4481],
+
+    // Oceania
+    ["Sydney, Australia", -33.8688, 151.2070],
+    ["Melbourne, Australia", -37.8169, 144.9654],
+    ["Brisbane, Australia", -27.4698, 153.0251],
+    ["Perth, Australia", -31.9522, 115.8589],
+    ["Fremantle, Australia", -32.0560, 115.7470],
+    ["Adelaide, Australia", -34.9228, 138.6006],
+    ["Hobart, Australia", -42.8860, 147.3330],
+    ["Launceston, Australia", -41.4380, 147.1370],
+    ["Darwin, Australia", -12.4634, 130.8456],
+    ["Cairns, Australia", -16.9203, 145.7710],
+    ["Alice Springs, Australia", -23.6980, 133.8807],
+    ["Byron Bay, Australia", -28.6436, 153.6150],
+    ["Gold Coast, Australia", -28.0023, 153.4310],
+    ["Noosa Heads, Australia", -26.3900, 153.0900],
+    ["Broome, Australia", -17.9614, 122.2359],
+    ["Canberra, Australia", -35.2793, 149.1300],
+    ["Auckland, New Zealand", -36.8485, 174.7633],
+    ["Wellington, New Zealand", -41.2925, 174.7750],
+    ["Queenstown, New Zealand", -45.0312, 168.6626],
+    ["Christchurch, New Zealand", -43.5321, 172.6362],
+    ["Rotorua, New Zealand", -38.1368, 176.2497],
+    ["Dunedin, New Zealand", -45.8742, 170.5036],
+    ["Nelson, New Zealand", -41.2706, 173.2840],
+    ["Napier, New Zealand", -39.4928, 176.9120],
+    ["Wānaka, New Zealand", -44.7000, 169.1320],
+    ["Suva, Fiji", -18.1416, 178.4419],
+    ["Papeete, French Polynesia", -17.5350, -149.5696],
+    ["Hagåtña, Guam", 13.4757, 144.7503],
+  ];
+
+  const ROUNDS = 5;
+  const MAX_POINTS = 5000;
+
+  const $ = (id) => document.getElementById(id);
+  const els = {
+    sv: $("sv"), hud: $("hud"), round: $("hud-round"), score: $("hud-score"),
+    panel: $("guess-panel"), guessBtn: $("btn-guess"), toggle: $("map-toggle"),
+    start: $("start"), result: $("result"), final: $("final"),
+    resPoints: $("res-points"), resPlace: $("res-place"), resDist: $("res-dist"), resBar: $("res-bar"),
+    nextBtn: $("btn-next"), finalTotal: $("final-total"), finalVerdict: $("final-verdict"), finalRows: $("final-rows"),
+  };
+
+  // ---------- Location deck (shuffled, no repeats until exhausted) ----------
+  let deck = [];
+  function shuffle(a) {
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+  function drawLocation() {
+    if (!deck.length) deck = shuffle(LOCATIONS.slice());
+    const [name, lat, lng] = deck.pop();
+    return { name, lat, lng, heading: Math.floor(Math.random() * 360) };
+  }
+
+  // ---------- Geo + scoring ----------
+  function haversineKm(a, b) {
+    const R = 6371, rad = Math.PI / 180;
+    const dLat = (b.lat - a.lat) * rad, dLng = (b.lng - a.lng) * rad;
+    const h = Math.sin(dLat / 2) ** 2 +
+      Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+  }
+  function scoreFor(km) {
+    if (km < 0.1) return MAX_POINTS;
+    return Math.round(MAX_POINTS * Math.exp(-km / 1500));
+  }
+  function fmtDist(km) {
+    if (km < 1) return Math.round(km * 1000) + " m";
+    return (km < 10 ? km.toFixed(1) : Math.round(km).toLocaleString("en-US")) + " km";
+  }
+  const fmtNum = (n) => n.toLocaleString("en-US");
+
+  // ---------- Maps ----------
+  const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
+  const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+  const tileUrl = () => darkQuery.matches
+    ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+    : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
+  const makeTiles = () => L.tileLayer(tileUrl(), {
+    attribution: ATTRIBUTION, subdomains: "abcd", maxZoom: 19,
+  });
+
+  const pinIcon = (kind) => L.divIcon({
+    className: "", html: `<div class="pin ${kind}"></div>`,
+    iconSize: [26, 26], iconAnchor: [13, 30],
+  });
+
+  const guessMap = L.map("guess-map", {
+    worldCopyJump: true, zoomControl: true, attributionControl: true,
+    minZoom: 1,
+  }).setView([20, 0], 1);
+  let guessTiles = makeTiles().addTo(guessMap);
+
+  const resultMap = L.map("result-map", { worldCopyJump: true, minZoom: 1 }).setView([20, 0], 2);
+  let resultTiles = makeTiles().addTo(resultMap);
+  const resultLayer = L.layerGroup().addTo(resultMap);
+
+  darkQuery.addEventListener("change", () => {
+    guessMap.removeLayer(guessTiles); guessTiles = makeTiles().addTo(guessMap);
+    resultMap.removeLayer(resultTiles); resultTiles = makeTiles().addTo(resultMap);
+  });
+
+  let guessMarker = null;
+  guessMap.on("click", (e) => {
+    const ll = e.latlng;
+    if (guessMarker) guessMarker.setLatLng(ll);
+    else guessMarker = L.marker(ll, { icon: pinIcon("guess"), keyboard: false }).addTo(guessMap);
+    els.guessBtn.disabled = false;
+  });
+
+  // Keep Leaflet sized correctly while the panel animates
+  const panelObserver = new ResizeObserver(() => guessMap.invalidateSize({ pan: false }));
+  panelObserver.observe($("guess-map"));
+
+  // ---------- Game state ----------
+  let state = null;
+
+  function show(el, on) { el.classList.toggle("hidden", !on); }
+
+  function loadStreetView(loc) {
+    const src = `https://maps.google.com/maps?layer=c&cbll=${loc.lat},${loc.lng}` +
+      `&cbp=12,${loc.heading},,0,0&output=svembed`;
+    els.sv.src = "about:blank";
+    requestAnimationFrame(() => { els.sv.src = src; });
+  }
+
+  function updateHud() {
+    els.round.textContent = `${state.round + 1}/${ROUNDS}`;
+    els.score.textContent = fmtNum(state.total);
+  }
+
+  function resetGuessMap() {
+    if (guessMarker) { guessMap.removeLayer(guessMarker); guessMarker = null; }
+    els.guessBtn.disabled = true;
+    setMapOpen(false);
+    guessMap.setView([20, 0], 1);
+  }
+
+  function startRound() {
+    state.current = drawLocation();
+    loadStreetView(state.current);
+    resetGuessMap();
+    updateHud();
+    show(els.result, false);
+    show(els.final, false);
+    show(els.hud, true);
+    show(els.panel, true);
+    setTimeout(() => guessMap.invalidateSize(), 50);
+  }
+
+  function newGame() {
+    state = { round: 0, total: 0, history: [], current: null };
+    show(els.start, false);
+    startRound();
+  }
+
+  function submitGuess() {
+    if (!guessMarker) return;
+    const g = guessMarker.getLatLng().wrap();
+    const guess = { lat: g.lat, lng: g.lng };
+    const real = state.current;
+    const km = haversineKm(guess, real);
+    const pts = scoreFor(km);
+    state.total += pts;
+    state.history.push({ name: real.name, km, pts });
+    updateHud();
+
+    // Result screen
+    show(els.panel, false);
+    show(els.result, true);
+    els.sv.src = "about:blank";
+    els.resPoints.textContent = fmtNum(pts);
+    els.resPlace.textContent = real.name;
+    els.resDist.textContent = km < 0.1
+      ? "Spot on — less than 100 m away!"
+      : `Your guess was ${fmtDist(km)} away.`;
+    els.resBar.style.width = "0%";
+    els.nextBtn.textContent = state.round + 1 >= ROUNDS ? "See final score" : "Next round";
+
+    resultLayer.clearLayers();
+    // Draw the line along the shorter way around the globe
+    let gLng = guess.lng;
+    if (gLng - real.lng > 180) gLng -= 360;
+    else if (real.lng - gLng > 180) gLng += 360;
+    const gLL = L.latLng(guess.lat, gLng), rLL = L.latLng(real.lat, real.lng);
+    L.polyline([gLL, rLL], { color: "#F2A33A", weight: 3, dashArray: "8 10", opacity: 0.95 }).addTo(resultLayer);
+    L.marker(gLL, { icon: pinIcon("guess"), keyboard: false }).addTo(resultLayer);
+    L.marker(rLL, { icon: pinIcon("real"), keyboard: false }).addTo(resultLayer);
+
+    requestAnimationFrame(() => {
+      resultMap.invalidateSize();
+      const card = document.querySelector(".result-card");
+      const bottomPad = (card ? card.offsetHeight : 200) + 40;
+      resultMap.fitBounds(L.latLngBounds([gLL, rLL]), {
+        paddingTopLeft: [50, 60], paddingBottomRight: [50, bottomPad], maxZoom: 14, animate: false,
+      });
+      setTimeout(() => { els.resBar.style.width = (pts / MAX_POINTS * 100).toFixed(1) + "%"; }, 80);
+    });
+  }
+
+  function nextRound() {
+    state.round++;
+    if (state.round >= ROUNDS) return showFinal();
+    startRound();
+  }
+
+  function verdictFor(pct) {
+    if (pct >= 90) return "Human GPS. Are you sure you didn't peek?";
+    if (pct >= 75) return "Seasoned globetrotter.";
+    if (pct >= 55) return "Well-traveled — nicely done.";
+    if (pct >= 35) return "Getting your bearings.";
+    if (pct >= 15) return "Scenic route enthusiast.";
+    return "Lost, but having a great time.";
+  }
+
+  function showFinal() {
+    show(els.result, false);
+    show(els.hud, false);
+    show(els.panel, false);
+    const max = ROUNDS * MAX_POINTS;
+    els.finalTotal.textContent = fmtNum(state.total);
+    els.finalVerdict.textContent = verdictFor(state.total / max * 100);
+    els.finalRows.innerHTML = "";
+    state.history.forEach((h, i) => {
+      const tr = document.createElement("tr");
+      const cells = [String(i + 1), h.name, fmtDist(h.km), fmtNum(h.pts)];
+      cells.forEach((text, c) => {
+        const td = document.createElement("td");
+        td.textContent = text;
+        if (c >= 2) td.className = "num" + (c === 3 ? " pts" : "");
+        tr.appendChild(td);
+      });
+      els.finalRows.appendChild(tr);
+    });
+    show(els.final, true);
+  }
+
+  // ---------- Mobile map toggle ----------
+  function setMapOpen(open) {
+    els.panel.classList.toggle("open", open);
+    els.toggle.textContent = open ? "Hide map" : "Open map";
+    if (open) setTimeout(() => guessMap.invalidateSize(), 30);
+  }
+
+  // ---------- Wiring ----------
+  $("btn-start").addEventListener("click", newGame);
+  $("btn-again").addEventListener("click", newGame);
+  els.guessBtn.addEventListener("click", submitGuess);
+  els.nextBtn.addEventListener("click", nextRound);
+  els.toggle.addEventListener("click", () => setMapOpen(!els.panel.classList.contains("open")));
+  $("btn-back").addEventListener("click", () => state && loadStreetView(state.current));
+  $("btn-skip").addEventListener("click", () => {
+    if (!state) return;
+    state.current = drawLocation();
+    loadStreetView(state.current);
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    if (e.target.tagName === "BUTTON") return;
+    if (!els.result.classList.contains("hidden")) { e.preventDefault(); nextRound(); }
+    else if (!els.panel.classList.contains("hidden") && guessMarker) { e.preventDefault(); submitGuess(); }
+  });
+})();
+</script>
+</body>
+</html>
