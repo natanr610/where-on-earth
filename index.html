@@ -66,7 +66,7 @@
     transition: transform .12s ease, opacity .2s ease, background .2s ease;
   }
   button:active:not(:disabled) { transform: scale(0.97); }
-  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  button:disabled { cursor: not-allowed; background: var(--surface-solid); color: var(--muted); border: 1px solid var(--line); }
   button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   button.ghost {
     background: var(--surface); color: var(--fg);
@@ -102,7 +102,7 @@
   /* Guess panel */
   #guess-panel {
     position: fixed; z-index: 600;
-    right: calc(var(--safe-r) + 16px); bottom: calc(var(--safe-b) + 16px);
+    right: calc(var(--safe-r) + 16px); bottom: calc(var(--safe-b) + 34px);
     display: flex; flex-direction: column; gap: 10px; align-items: stretch;
     width: 320px;
     transition: width .25s ease;
@@ -123,7 +123,7 @@
   @media (max-width: 699px), (hover: none) {
     #guess-panel {
       left: calc(var(--safe-l) + 12px); right: calc(var(--safe-r) + 12px);
-      bottom: calc(var(--safe-b) + 12px); width: auto;
+      bottom: calc(var(--safe-b) + 32px); width: auto;
     }
     #guess-map { display: none; height: min(58dvh, 480px); opacity: 1; }
     #guess-panel.open #guess-map { display: block; }
@@ -208,9 +208,11 @@
   td.pts { font-weight: 700; }
   #final button { font-size: 1.1rem; padding: .8em 2em; }
 
-  .leaflet-container { background: var(--bg); font-family: "Atkinson Hyperlegible", sans-serif; }
+  .leaflet-container { background: #aad3df; font-family: "Atkinson Hyperlegible", sans-serif; }
   .leaflet-container a { color: inherit; }
   @media (prefers-color-scheme: dark) {
+    .leaflet-container { background: #1b2b36; }
+    .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9) saturate(0.6); }
     .leaflet-control-attribution { background: rgba(18,40,58,.8) !important; color: #c9d6dd; }
     .leaflet-bar a { background: #1a3449; color: var(--paper); border-color: rgba(255,255,255,.12); }
   }
@@ -659,13 +661,10 @@
   const fmtNum = (n) => n.toLocaleString("en-US");
 
   // ---------- Maps ----------
-  const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
-  const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
-  const tileUrl = () => darkQuery.matches
-    ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-    : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png";
-  const makeTiles = () => L.tileLayer(tileUrl(), {
-    attribution: ATTRIBUTION, subdomains: "abcd", maxZoom: 19,
+  // OpenStreetMap standard tiles: free, no API key (dark mode is a CSS filter)
+  const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+  const makeTiles = () => L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    attribution: ATTRIBUTION, maxZoom: 19,
   });
 
   const pinIcon = (kind) => L.divIcon({
@@ -673,20 +672,29 @@
     iconSize: [26, 26], iconAnchor: [13, 30],
   });
 
-  const guessMap = L.map("guess-map", {
-    worldCopyJump: true, zoomControl: true, attributionControl: true,
-    minZoom: 1,
-  }).setView([20, 0], 1);
-  let guessTiles = makeTiles().addTo(guessMap);
+  // Stop panning past the poles so the map never shows empty space
+  const mapOpts = {
+    worldCopyJump: true, minZoom: 1,
+    maxBounds: [[-85, -100000], [85, 100000]], maxBoundsViscosity: 1,
+  };
+  const guessMap = L.map("guess-map", mapOpts).setView([20, 0], 1);
+  makeTiles().addTo(guessMap);
 
-  const resultMap = L.map("result-map", { worldCopyJump: true, minZoom: 1 }).setView([20, 0], 2);
-  let resultTiles = makeTiles().addTo(resultMap);
+  const resultMap = L.map("result-map", mapOpts).setView([20, 0], 2);
+  makeTiles().addTo(resultMap);
   const resultLayer = L.layerGroup().addTo(resultMap);
 
-  darkQuery.addEventListener("change", () => {
-    guessMap.removeLayer(guessTiles); guessTiles = makeTiles().addTo(guessMap);
-    resultMap.removeLayer(resultTiles); resultTiles = makeTiles().addTo(resultMap);
-  });
+  // Smallest zoom at which the world is at least as tall as the map
+  function worldZoom(map) {
+    const h = map.getSize().y || 256;
+    return Math.max(1, Math.ceil(Math.log2(h / 256)));
+  }
+  function showWholeWorld() {
+    guessMap.invalidateSize({ pan: false });
+    const z = worldZoom(guessMap);
+    guessMap.setMinZoom(z);
+    guessMap.setView([20, 0], z, { animate: false });
+  }
 
   let guessMarker = null;
   guessMap.on("click", (e) => {
@@ -721,7 +729,7 @@
     if (guessMarker) { guessMap.removeLayer(guessMarker); guessMarker = null; }
     els.guessBtn.disabled = true;
     setMapOpen(false);
-    guessMap.setView([20, 0], 1);
+    showWholeWorld();
   }
 
   function startRound() {
@@ -733,7 +741,7 @@
     show(els.final, false);
     show(els.hud, true);
     show(els.panel, true);
-    setTimeout(() => guessMap.invalidateSize(), 50);
+    setTimeout(showWholeWorld, 50);
   }
 
   function newGame() {
@@ -777,6 +785,7 @@
 
     requestAnimationFrame(() => {
       resultMap.invalidateSize();
+      resultMap.setMinZoom(worldZoom(resultMap));
       const card = document.querySelector(".result-card");
       const bottomPad = (card ? card.offsetHeight : 200) + 40;
       resultMap.fitBounds(L.latLngBounds([gLL, rLL]), {
@@ -827,7 +836,7 @@
   function setMapOpen(open) {
     els.panel.classList.toggle("open", open);
     els.toggle.textContent = open ? "Hide map" : "Open map";
-    if (open) setTimeout(() => guessMap.invalidateSize(), 30);
+    if (open) setTimeout(() => (guessMarker ? guessMap.invalidateSize() : showWholeWorld()), 30);
   }
 
   // ---------- Wiring ----------
