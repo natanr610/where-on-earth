@@ -28,6 +28,8 @@
     --shadow: 0 10px 30px rgba(18, 40, 58, 0.22);
     --btn-fg: var(--ink);
     --track: rgba(18, 40, 58, 0.12);
+    --ok: #15805a;
+    --bad: #c4421d;
 
     --safe-t: env(safe-area-inset-top, 0px);
     --safe-r: env(safe-area-inset-right, 0px);
@@ -44,6 +46,8 @@
       --line: rgba(238, 243, 241, 0.16);
       --shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
       --track: rgba(238, 243, 241, 0.14);
+      --ok: #4fd1a1;
+      --bad: #ff8a66;
     }
   }
 
@@ -67,7 +71,7 @@
   }
   button:active:not(:disabled) { transform: scale(0.97); }
   button:disabled { cursor: not-allowed; background: var(--surface-solid); color: var(--muted); border: 1px solid var(--line); }
-  button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  button:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
   button.ghost {
     background: var(--surface); color: var(--fg);
     border: 1px solid var(--line);
@@ -98,6 +102,12 @@
   .hud-stats .val { font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; font-size: 1.25rem; }
   .hud-actions { display: flex; gap: 8px; flex-wrap: wrap; }
   .hud-actions button { font-size: 0.85rem; padding: 0.5em 0.95em; min-height: 38px; box-shadow: var(--shadow); }
+  #hints { display: flex; flex-wrap: wrap; gap: 6px; max-width: 440px; }
+  #hints span {
+    background: var(--surface); color: var(--fg); border: 1px solid var(--line);
+    border-radius: 10px; padding: 5px 10px; font-size: .85rem; box-shadow: var(--shadow);
+  }
+  #hints span small { color: var(--muted); text-transform: uppercase; letter-spacing: .06em; font-size: .7rem; margin-right: 4px; }
 
   /* Guess panel */
   #guess-panel {
@@ -130,6 +140,41 @@
     #map-toggle { display: block; }
   }
 
+  /* Country quiz panel */
+  #quiz-panel {
+    position: fixed; z-index: 600;
+    left: 50%; transform: translateX(-50%); bottom: calc(var(--safe-b) + 32px);
+    width: min(560px, calc(100vw - var(--safe-l) - var(--safe-r) - 24px));
+    background: var(--surface); color: var(--fg); border-radius: 18px; padding: 14px;
+    box-shadow: var(--shadow); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  }
+  #quiz-panel h2 { font-size: 1.1rem; margin: 2px 4px 10px; }
+  .quiz-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .quiz-grid button {
+    background: var(--surface-solid); color: var(--fg); border: 1px solid var(--line);
+    border-radius: 12px; line-height: 1.2;
+  }
+
+  /* Self-check sheet */
+  .sheet {
+    position: fixed; z-index: 800; left: 50%; transform: translateX(-50%); bottom: 0;
+    width: min(620px, 100vw); max-height: 80dvh; overflow-y: auto;
+    background: var(--surface-solid); color: var(--fg); border-radius: 22px 22px 0 0;
+    padding: 20px calc(var(--safe-r) + 20px) calc(var(--safe-b) + 20px) calc(var(--safe-l) + 20px);
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, .3);
+  }
+  .sheet h2 { font-size: 1.4rem; }
+  .sub { color: var(--muted); margin: 4px 0 16px; line-height: 1.4; }
+  .q-group { margin-bottom: 16px; }
+  .q-group .label { font-weight: 700; margin-bottom: 8px; display: block; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip {
+    min-height: 38px; padding: .45em .95em; font-size: .9rem; font-weight: 700;
+    background: var(--bg); color: var(--fg); border: 1px solid var(--line);
+  }
+  .chip[aria-pressed="true"] { background: var(--accent); color: var(--ink); border-color: transparent; }
+  .sheet #btn-reveal { width: 100%; margin-top: 4px; }
+
   /* Pins */
   .pin {
     width: 26px; height: 26px; border-radius: 50% 50% 50% 0;
@@ -150,16 +195,17 @@
     display: flex; flex-direction: column;
   }
   .center-screen {
-    align-items: center; justify-content: center; text-align: center;
+    align-items: center; text-align: center;
     padding: calc(var(--safe-t) + 24px) calc(var(--safe-r) + 20px) calc(var(--safe-b) + 24px) calc(var(--safe-l) + 20px);
     overflow-y: auto;
   }
+  .center-screen > .wrap { margin: auto 0; width: min(600px, 100%); }
   #start h1 { font-size: clamp(2.6rem, 10vw, 5.2rem); font-weight: 800; line-height: .95; }
   #start h1 span { color: var(--accent); }
-  #start p { font-size: 1.15rem; color: var(--muted); max-width: 30em; margin: 18px auto 28px; line-height: 1.45; }
-  #start button { font-size: 1.15rem; padding: .85em 2em; }
+  #start .intro { font-size: 1.1rem; color: var(--muted); max-width: 30em; margin: 16px auto 22px; line-height: 1.45; }
+  #btn-start { font-size: 1.15rem; padding: .85em 2em; }
   .globe {
-    width: 88px; height: 88px; margin: 0 auto 22px; border-radius: 50%;
+    width: 76px; height: 76px; margin: 0 auto 18px; border-radius: 50%;
     background:
       radial-gradient(circle at 35% 35%, rgba(255,255,255,.35), transparent 45%),
       radial-gradient(circle at 60% 60%, var(--real) 0 22%, transparent 23%),
@@ -170,43 +216,106 @@
     position: relative;
   }
   .globe::after {
-    content: ""; position: absolute; width: 22px; height: 22px; right: -4px; top: -4px;
+    content: ""; position: absolute; width: 20px; height: 20px; right: -4px; top: -4px;
     border-radius: 50% 50% 50% 0; transform: rotate(-45deg);
     background: var(--guess); border: 3px solid var(--bg);
   }
+  .modes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 0 auto 12px; }
+  .mode {
+    border-radius: 14px; background: var(--surface-solid); color: var(--fg);
+    border: 1px solid var(--line); padding: 12px 14px; text-align: left;
+    display: flex; flex-direction: column; gap: 3px; font-weight: 400;
+  }
+  .mode b { font-weight: 700; }
+  .mode small { color: var(--muted); font-size: .82rem; line-height: 1.3; }
+  .mode[aria-checked="true"] { border: 2px solid var(--accent); padding: 11px 13px; box-shadow: 0 0 0 3px rgba(242, 163, 58, .25); }
+  @media (max-width: 560px) { .modes { grid-template-columns: 1fr; } }
+  .opt { display: inline-flex; align-items: center; gap: 10px; margin: 4px 0 20px; cursor: pointer; }
+  .opt input { width: 20px; height: 20px; accent-color: var(--accent); margin: 0; }
+  .links { display: flex; gap: 8px; justify-content: center; margin-top: 14px; flex-wrap: wrap; }
 
-  #result-map { flex: 1; min-height: 0; }
+  /* Result */
+  #result-map { flex: 1; min-height: 30dvh; }
   .result-card {
-    position: absolute; z-index: 1000;
-    left: 50%; transform: translateX(-50%);
-    bottom: calc(var(--safe-b) + 16px);
-    width: min(520px, calc(100vw - var(--safe-l) - var(--safe-r) - 24px));
-    background: var(--surface); color: var(--fg);
-    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-    border-radius: 20px; padding: 18px 20px; box-shadow: var(--shadow);
+    position: relative; z-index: 1000; width: min(640px, 100%); margin: 0 auto;
+    max-height: 66dvh; overflow-y: auto;
+    background: var(--surface-solid); color: var(--fg);
+    border-radius: 20px 20px 0 0; box-shadow: 0 -10px 30px rgba(0, 0, 0, .2);
+    padding: 18px calc(var(--safe-r) + 20px) 0 calc(var(--safe-l) + 20px);
   }
   .result-card .points { font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; font-size: 2.2rem; line-height: 1; }
   .result-card .points small { font-size: 1rem; font-weight: 600; color: var(--muted); }
+  .result-card .penalty { font-family: "Atkinson Hyperlegible", sans-serif; font-size: .9rem; font-weight: 700; color: var(--bad); margin-left: 6px; }
   .result-card .place { font-size: 1.1rem; margin-top: 6px; }
-  .result-card .place b { color: var(--real); }
+  .result-card .place b { color: var(--ok); }
   .result-card .dist { color: var(--muted); margin-top: 2px; }
   .legend { display: flex; gap: 14px; font-size: .85rem; color: var(--muted); margin-top: 8px; }
   .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; vertical-align: -1px; }
   .bar { height: 10px; border-radius: 99px; background: var(--track); overflow: hidden; margin: 12px 0 14px; }
   .bar > div { height: 100%; width: 0; border-radius: 99px; background: linear-gradient(90deg, var(--accent), var(--real)); transition: width .9s cubic-bezier(.2,.8,.2,1); }
-  .result-card button { width: 100%; }
+  .checks { display: flex; flex-wrap: wrap; gap: 6px; }
+  .checks span { border: 1px solid var(--line); border-radius: 10px; padding: 4px 10px; font-size: .88rem; }
+  .checks .ok b { color: var(--ok); }
+  .checks .bad b { color: var(--bad); }
+  .checks .skip { color: var(--muted); }
+  .result-actions {
+    position: sticky; bottom: 0; background: var(--surface-solid);
+    padding: 12px 0 calc(var(--safe-b) + 16px);
+  }
+  .result-actions button { width: 100%; }
 
-  #final .wrap { width: min(560px, 100%); }
+  /* Clue cards */
+  .clues { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 12px; text-align: left; }
+  .clues h3 { font-size: 1.05rem; margin-bottom: 8px; }
+  .clues dl { display: grid; grid-template-columns: auto 1fr; gap: 5px 12px; margin: 0 0 8px; font-size: .95rem; }
+  .clues dt { color: var(--muted); font-size: .74rem; text-transform: uppercase; letter-spacing: .07em; padding-top: 3px; white-space: nowrap; }
+  .clues dd { margin: 0; line-height: 1.35; }
+  .clues ul { margin: 0; padding-left: 1.2em; line-height: 1.4; }
+  .clues li { margin: 3px 0; }
+
+  /* Final */
   #final .eyebrow { text-transform: uppercase; letter-spacing: .12em; font-size: .8rem; color: var(--muted); }
   #final .total { font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; font-size: clamp(3rem, 14vw, 4.6rem); line-height: 1; margin: 6px 0 2px; }
   #final .total small { font-size: .35em; color: var(--muted); font-weight: 600; }
   #final .verdict { font-size: 1.35rem; color: var(--accent); font-family: "Bricolage Grotesque", sans-serif; font-weight: 700; margin: 6px 0 20px; }
-  table { width: 100%; border-collapse: collapse; text-align: left; margin-bottom: 24px; font-size: .95rem; }
+  #btn-again { font-size: 1.1rem; padding: .8em 2em; }
+  table { width: 100%; border-collapse: collapse; text-align: left; margin-bottom: 20px; font-size: .95rem; }
   th, td { padding: 10px 6px; border-bottom: 1px solid var(--line); }
   th { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 700; }
   td.num, th.num { text-align: right; white-space: nowrap; }
   td.pts { font-weight: 700; }
-  #final button { font-size: 1.1rem; padding: .8em 2em; }
+  .yes { color: var(--ok); font-weight: 700; }
+  .no { color: var(--bad); font-weight: 700; }
+
+  /* Stats + field guide pages */
+  .page {
+    overflow-y: auto;
+    padding: calc(var(--safe-t) + 20px) calc(var(--safe-r) + 20px) calc(var(--safe-b) + 32px) calc(var(--safe-l) + 20px);
+  }
+  .page .inner { width: min(780px, 100%); margin: 0 auto; }
+  .page-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .page h1 { font-size: clamp(1.8rem, 6vw, 2.6rem); font-weight: 800; }
+  .page h2 { font-size: 1.25rem; margin: 28px 0 10px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .tile { background: var(--surface-solid); border: 1px solid var(--line); border-radius: 16px; padding: 14px; }
+  .tile .v { font-family: "Bricolage Grotesque", sans-serif; font-weight: 800; font-size: 1.8rem; line-height: 1.1; }
+  .tile .k { color: var(--muted); font-size: .85rem; }
+  .meter { display: grid; grid-template-columns: 9.5em 1fr 4.5em; align-items: center; gap: 10px; margin: 8px 0; font-size: .95rem; }
+  .meter .bar { margin: 0; }
+  .meter .bar > div { transition: none; }
+  .meter .num { text-align: right; color: var(--muted); font-size: .85rem; }
+  .empty { color: var(--muted); line-height: 1.45; }
+  .page-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 28px; }
+  .guide-tools { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+  .guide-tools input {
+    font: inherit; width: 100%; min-height: 46px; padding: 10px 16px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--surface-solid); color: var(--fg);
+  }
+  .card-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; }
+  .ccard { background: var(--surface-solid); border: 1px solid var(--line); border-radius: 16px; padding: 16px; }
+  .ccard h3 { font-size: 1.2rem; }
+  .ccard .meta { color: var(--muted); font-size: .85rem; margin-top: 2px; }
+  .ccard .clues { margin-top: 10px; padding-top: 10px; }
 
   .leaflet-container { background: #aad3df; font-family: "Atkinson Hyperlegible", sans-serif; }
   .leaflet-container a { color: inherit; }
@@ -232,7 +341,9 @@
   <div class="hud-actions">
     <button class="ghost" id="btn-back" title="Return to where this round started">Back to start</button>
     <button class="ghost" id="btn-skip" title="No imagery? Get a different location">Skip location</button>
+    <button class="ghost" id="btn-hint" title="Reveal a clue, at a cost of 500 points">Hint · −500</button>
   </div>
+  <div id="hints"></div>
 </div>
 
 <div id="guess-panel" class="hidden">
@@ -243,22 +354,50 @@
   </div>
 </div>
 
+<div id="quiz-panel" class="hidden">
+  <h2>Which country is this?</h2>
+  <div class="quiz-grid" id="quiz-options"></div>
+</div>
+
+<section id="check" class="sheet hidden" aria-label="Self-check">
+  <h2>Before the reveal…</h2>
+  <p class="sub">What did you notice? Leave anything you're unsure of blank.</p>
+  <div class="q-group"><span class="label">Which side of the road do they drive on?</span><div class="chips" data-q="drive"></div></div>
+  <div class="q-group"><span class="label">Which writing system did you see?</span><div class="chips" data-q="script"></div></div>
+  <div class="q-group"><span class="label">Which hemisphere is it in?</span><div class="chips" data-q="hemi"></div></div>
+  <button id="btn-reveal">Reveal answer</button>
+</section>
+
 <section id="start" class="overlay center-screen">
-  <div class="globe" aria-hidden="true"></div>
-  <h1>Where on <span>Earth?</span></h1>
-  <p>You're dropped somewhere on the planet. Look around, then pin your guess on the map — the closer you are, the more points you score.</p>
-  <button id="btn-start">Start game</button>
+  <div class="wrap">
+    <div class="globe" aria-hidden="true"></div>
+    <h1>Where on <span>Earth?</span></h1>
+    <p class="intro">Look around a random street, then work out where you are. Every round teaches you the clues that give a country away.</p>
+    <div class="modes" role="radiogroup" aria-label="Game mode">
+      <button class="mode" role="radio" data-mode="classic"><b>Classic</b><small>Pin your guess on a world map.</small></button>
+      <button class="mode" role="radio" data-mode="weak"><b>Weak spots</b><small>Countries you miss come up more often.</small></button>
+      <button class="mode" role="radio" data-mode="quiz"><b>Country quiz</b><small>Pick the country from four options.</small></button>
+    </div>
+    <label class="opt"><input type="checkbox" id="opt-check"> Self-check before each reveal</label>
+    <div><button id="btn-start">Start game</button></div>
+    <div class="links">
+      <button class="ghost" id="btn-stats">Your stats</button>
+      <button class="ghost" id="btn-guide">Field guide</button>
+    </div>
+  </div>
 </section>
 
 <section id="result" class="overlay hidden">
   <div id="result-map"></div>
   <div class="result-card">
-    <div class="points"><span id="res-points">0</span> <small>points</small></div>
+    <div class="points"><span id="res-points">0</span> <small>points</small><span class="penalty" id="res-penalty"></span></div>
     <div class="place">It was <b id="res-place"></b></div>
     <div class="dist" id="res-dist"></div>
-    <div class="legend"><span><i style="background:var(--guess)"></i>Your guess</span><span><i style="background:var(--real)"></i>Actual location</span></div>
+    <div class="legend" id="res-legend"><span><i style="background:var(--guess)"></i>Your guess</span><span><i style="background:var(--real)"></i>Actual location</span></div>
     <div class="bar"><div id="res-bar"></div></div>
-    <button id="btn-next">Next round</button>
+    <div class="checks" id="res-checks"></div>
+    <div id="res-clues"></div>
+    <div class="result-actions"><button id="btn-next">Next round</button></div>
   </div>
 </section>
 
@@ -268,10 +407,32 @@
     <div class="total"><span id="final-total">0</span> <small>/ 25,000</small></div>
     <div class="verdict" id="final-verdict"></div>
     <table>
-      <thead><tr><th>#</th><th>Place</th><th class="num">Distance</th><th class="num">Points</th></tr></thead>
+      <thead><tr><th>#</th><th>Place</th><th class="num">Result</th><th class="num">Points</th></tr></thead>
       <tbody id="final-rows"></tbody>
     </table>
     <button id="btn-again">Play again</button>
+    <div class="links">
+      <button class="ghost" id="btn-final-stats">Your stats</button>
+      <button class="ghost" id="btn-menu">Main menu</button>
+    </div>
+  </div>
+</section>
+
+<section id="stats" class="overlay page hidden">
+  <div class="inner">
+    <div class="page-head"><h1>Your stats</h1><button class="ghost" data-close>Back</button></div>
+    <div id="stats-body"></div>
+  </div>
+</section>
+
+<section id="guide" class="overlay page hidden">
+  <div class="inner">
+    <div class="page-head"><h1>Field guide</h1><button class="ghost" data-close>Back</button></div>
+    <div class="guide-tools">
+      <input type="search" id="guide-search" placeholder="Search countries or clues (e.g. “yellow”, “left”)" aria-label="Search the field guide">
+      <div class="chips" id="guide-regions"></div>
+    </div>
+    <div class="card-list" id="guide-list"></div>
   </div>
 </section>
 
@@ -615,20 +776,172 @@
     ["Hagåtña, Guam", 13.4757, 144.7503],
   ];
 
+  // ---------- What to look for, per country ----------
+  const SCRIPTS = {
+    latin: "Latin alphabet", cyrillic: "Cyrillic", greek: "Greek", hebrew: "Hebrew", arabic: "Arabic",
+    cjk: "Chinese / Japanese / Korean", sea: "Thai / Khmer / Lao", southasian: "South Asian scripts",
+  };
+  const REGIONS = ["North America", "South America", "Europe", "Middle East", "Asia", "Africa", "Oceania"];
+
+  // [country, region, drives (L/R), scripts, language, web ending, phone code, distinctive clues]
+  const COUNTRY_DATA = [
+    // North America
+    ["USA", "North America", "R", "latin", "English", ".us / .com", "+1", ["Yellow centre lines, white edge lines", "Speed limits in mph", "Many states use only a rear number plate"]],
+    ["Canada", "North America", "R", "latin", "English and French", ".ca", "+1", ["Yellow centre lines like the USA, but speeds in km/h", "French-only signs in Quebec; bilingual signs in places like Ottawa"]],
+    ["Mexico", "North America", "R", "latin", "Spanish", ".mx", "+52", ["Stop signs say “ALTO”", "Yellow centre lines", "“Topes” (speed bump) warnings everywhere"]],
+    ["Guatemala", "North America", "R", "latin", "Spanish", ".gt", "+502", ["Stop signs say “ALTO”", "Volcanoes and green highlands", "Brightly painted “chicken buses”"]],
+    ["Puerto Rico", "North America", "R", "latin", "Spanish and English", ".pr", "+1", ["US-style road signs written in Spanish; stop signs say “PARE”", "Distances in kilometres but speed limits in mph"]],
+    ["Dominican Republic", "North America", "R", "latin", "Spanish", ".do", "+1", ["Stop signs say “PARE”", "Motorbike taxis (motoconchos) everywhere", "Pastel Caribbean buildings with barred windows"]],
+    // South America
+    ["Argentina", "South America", "R", "latin", "Spanish", ".ar", "+54", ["Stop signs say “PARE”", "Mercosur plates: white with a blue band on top", "Wide, flat pampas outside the cities"]],
+    ["Chile", "South America", "R", "latin", "Spanish", ".cl", "+56", ["Stop signs say “PARE”", "The Andes often fill the horizon", "Dry desert in the north, green and rainy in the south"]],
+    ["Uruguay", "South America", "R", "latin", "Spanish", ".uy", "+598", ["Stop signs say “PARE”", "Mercosur plates: white with a blue band on top", "Gentle, flat grassland with very few hills"]],
+    ["Peru", "South America", "R", "latin", "Spanish", ".pe", "+51", ["Stop signs say “PARE”", "Unfinished brick houses with rebar sticking out of the roof", "Three-wheeled mototaxis"]],
+    ["Bolivia", "South America", "R", "latin", "Spanish", ".bo", "+591", ["Stop signs say “PARE”", "Very high altitude: bare brown hills, thin vegetation", "Unplastered red-brick buildings"]],
+    ["Ecuador", "South America", "R", "latin", "Spanish", ".ec", "+593", ["Stop signs say “PARE”", "Steep green Andean slopes", "Prices in US dollars"]],
+    ["Colombia", "South America", "R", "latin", "Spanish", ".co", "+57", ["Stop signs say “PARE”", "Yellow centre lines", "Lush green mountains and lots of motorbikes"]],
+    ["Brazil", "South America", "R", "latin", "Portuguese", ".br", "+55", ["Stop signs say “PARE”", "Mercosur plates: white with a blue band on top", "Red soil; yellow centre lines with white edge lines"]],
+    // Europe
+    ["Norway", "Europe", "R", "latin", "Norwegian", ".no", "+47", ["Yellow centre lines — rare in Europe", "Letters ø and å", "Wooden houses painted red, white or yellow"]],
+    ["Sweden", "Europe", "R", "latin", "Swedish", ".se", "+46", ["Letters å, ä and ö", "Falu-red wooden houses with white trim"]],
+    ["Denmark", "Europe", "R", "latin", "Danish", ".dk", "+45", ["Letters æ, ø and å", "Flat farmland and brick houses"]],
+    ["Finland", "Europe", "R", "latin", "Finnish and Swedish", ".fi", "+358", ["Yellow centre lines — rare in Europe", "Finnish and Swedish names on the same sign", "Long words with double vowels like “aa” and “ää”"]],
+    ["Iceland", "Europe", "R", "latin", "Icelandic", ".is", "+354", ["Letters þ and ð — unique to Icelandic", "Treeless volcanic landscapes and lava fields"]],
+    ["Estonia", "Europe", "R", "latin", "Estonian", ".ee", "+372", ["Letter õ alongside ä, ö and ü", "Flat land with pine and birch forest"]],
+    ["Latvia", "Europe", "R", "latin", "Latvian", ".lv", "+371", ["Long-vowel bars: ā, ē, ī, ū", "Consonants with a comma below: ķ, ļ, ņ"]],
+    ["Lithuania", "Europe", "R", "latin", "Lithuanian", ".lt", "+370", ["Letters ą, ę, į, ų and ė", "Words often end in -as, -is or -us"]],
+    ["UK", "Europe", "L", "latin", "English", ".uk", "+44", ["Yellow rear number plate, white front plate", "Double yellow lines along the kerb"]],
+    ["Ireland", "Europe", "L", "latin", "English and Irish", ".ie", "+353", ["Yellow edge lines on many roads", "Signs in Irish and English", "Speed limits in km/h, unlike the UK"]],
+    ["France", "Europe", "R", "latin", "French", ".fr", "+33", ["White roadside posts with a red band near the top", "Plates with blue strips on both sides (F on the left, region on the right)", "“Rue” and “Avenue” on street signs"]],
+    ["Netherlands", "Europe", "R", "latin", "Dutch", ".nl", "+31", ["Long yellow number plates", "Red-asphalt bike lanes everywhere", "Flat land, brick houses and canals"]],
+    ["Belgium", "Europe", "R", "latin", "Dutch and French", ".be", "+32", ["White plates with dark red characters", "Dutch signs in the north, French in the south"]],
+    ["Luxembourg", "Europe", "R", "latin", "French, German and Luxembourgish", ".lu", "+352", ["Yellow number plates", "Signs in French and German"]],
+    ["Germany", "Europe", "R", "latin", "German", ".de", "+49", ["Letters ä, ö, ü and ß", "Yellow town-name signs at village entrances", "White roadside posts with a black band"]],
+    ["Austria", "Europe", "R", "latin", "German", ".at", "+43", ["Plates with red stripes along the top and bottom", "Alpine scenery", "German words with ä, ö, ü and ß"]],
+    ["Switzerland", "Europe", "R", "latin", "German, French or Italian", ".ch", "+41", ["No EU strip on plates; the Swiss shield appears instead", "Green motorway signs, blue main-road signs", "Language changes by region"]],
+    ["Czechia", "Europe", "R", "latin", "Czech", ".cz", "+420", ["Letters ě, ř and ů", "Pastel baroque facades and red-tiled roofs"]],
+    ["Poland", "Europe", "R", "latin", "Polish", ".pl", "+48", ["Letters ł, ż, ś and ź", "Words packed with “sz”, “cz” and “rz”"]],
+    ["Hungary", "Europe", "R", "latin", "Hungarian", ".hu", "+36", ["Letters ő and ű (double accents)", "Long, non-Slavic words; “utca” means street"]],
+    ["Slovenia", "Europe", "R", "latin", "Slovene", ".si", "+386", ["Letters č, š and ž — but no ć", "“Ulica” and “cesta” on street signs; Alpine villages"]],
+    ["Slovakia", "Europe", "R", "latin", "Slovak", ".sk", "+421", ["Letters ä, ľ, ĺ and ô", "Looks like Czech, but has ľ and no ř"]],
+    ["Croatia", "Europe", "R", "latin", "Croatian", ".hr", "+385", ["Letters č, ć, đ, š and ž", "White limestone and terracotta roofs along the Adriatic"]],
+    ["Montenegro", "Europe", "R", "latin cyrillic", "Montenegrin", ".me", "+382", ["Signs in both Latin and Cyrillic", "Steep mountains dropping straight into the sea"]],
+    ["Bosnia and Herzegovina", "Europe", "R", "latin cyrillic", "Bosnian, Croatian and Serbian", ".ba", "+387", ["Signs in both Latin and Cyrillic", "Minarets alongside church towers"]],
+    ["Serbia", "Europe", "R", "cyrillic latin", "Serbian", ".rs", "+381", ["Cyrillic everywhere, often alongside Latin", "Plates with a blue strip but no EU stars"]],
+    ["North Macedonia", "Europe", "R", "cyrillic", "Macedonian", ".mk", "+389", ["Cyrillic with the unique letters ѓ, ќ and ѕ", "Plates with a blue strip reading NMK"]],
+    ["Albania", "Europe", "R", "latin", "Albanian", ".al", "+355", ["Letters ë and ç", "“Rruga” means street"]],
+    ["Bulgaria", "Europe", "R", "cyrillic", "Bulgarian", ".bg", "+359", ["Cyrillic, often with no Latin version", "Frequent ъ inside words"]],
+    ["Romania", "Europe", "R", "latin", "Romanian", ".ro", "+40", ["Letters ă, â, î, ș and ț", "“Strada” on street signs"]],
+    ["Greece", "Europe", "R", "greek latin", "Greek", ".gr", "+30", ["Greek alphabet, often with a Latin version below", "Whitewashed buildings and blue shutters on the islands"]],
+    ["Italy", "Europe", "R", "latin", "Italian", ".it", "+39", ["Plates with blue strips on both the left and the right", "“Via” and “Piazza” on street signs"]],
+    ["Malta", "Europe", "L", "latin", "Maltese and English", ".mt", "+356", ["Letters ħ, ġ and ż", "Honey-coloured limestone and colourful wooden balconies"]],
+    ["Spain", "Europe", "R", "latin", "Spanish (plus Catalan, Basque, Galician)", ".es", "+34", ["Letter ñ; “Calle” on street signs", "Plates show only an E on the blue strip, no regional code"]],
+    ["Portugal", "Europe", "R", "latin", "Portuguese", ".pt", "+351", ["Letters ã, õ and ç", "Plates with a yellow strip on the right", "Patterned stone pavements (calçada)"]],
+    ["Turkey", "Europe", "R", "latin", "Turkish", ".tr", "+90", ["Dotless ı plus ş and ğ", "Minarets and dense hillside apartment blocks"]],
+    ["Ukraine", "Europe", "R", "cyrillic", "Ukrainian", ".ua", "+380", ["Cyrillic with і, ї and є — letters Russian doesn't use", "Golden onion domes"]],
+    // Middle East
+    ["Israel", "Middle East", "R", "hebrew arabic latin", "Hebrew and Arabic", ".il", "+972", ["Yellow number plates", "Signs in Hebrew, Arabic and English"]],
+    ["Jordan", "Middle East", "R", "arabic latin", "Arabic", ".jo", "+962", ["Arabic and English signs", "Cream limestone block buildings on hills"]],
+    ["Lebanon", "Middle East", "R", "arabic latin", "Arabic and French", ".lb", "+961", ["Arabic with French or English on signs", "Dense hillside cities above the Mediterranean"]],
+    ["UAE", "Middle East", "R", "arabic latin", "Arabic and English", ".ae", "+971", ["Arabic and English signs", "Glass towers, wide highways and desert sand"]],
+    ["Qatar", "Middle East", "R", "arabic latin", "Arabic and English", ".qa", "+974", ["Arabic and English signs", "Flat desert and very new architecture"]],
+    // Asia
+    ["Japan", "Asia", "L", "cjk", "Japanese", ".jp", "+81", ["Small, nearly square plates; yellow plates on small kei cars", "Dense overhead power lines", "Narrow streets with no pavement"]],
+    ["South Korea", "Asia", "R", "cjk", "Korean (Hangul)", ".kr", "+82", ["Hangul: letters made of circles, lines and boxes", "Yellow centre lines", "Tall apartment blocks with big numbers painted on them"]],
+    ["Taiwan", "Asia", "R", "cjk", "Mandarin (Traditional Chinese)", ".tw", "+886", ["Traditional Chinese characters", "Scooters everywhere and arcaded shopfronts"]],
+    ["Hong Kong", "Asia", "L", "cjk latin", "Cantonese and English", ".hk", "+852", ["Yellow rear number plate, white front plate", "Traditional Chinese and English signs", "Red taxis and double-decker trams"]],
+    ["Macau", "Asia", "L", "cjk latin", "Cantonese and Portuguese", ".mo", "+853", ["Street signs in Chinese and Portuguese", "Black-and-white wave-pattern pavements"]],
+    ["Singapore", "Asia", "L", "latin cjk", "English, Chinese, Malay and Tamil", ".sg", "+65", ["English signs, often with Chinese, Malay and Tamil", "Spotless streets and manicured greenery"]],
+    ["Malaysia", "Asia", "L", "latin", "Malay", ".my", "+60", ["Black plates with white letters", "“Jalan” (road) on signs"]],
+    ["Thailand", "Asia", "L", "sea", "Thai", ".th", "+66", ["Thai script: loopy letters with small circles", "White plates with Thai characters"]],
+    ["Cambodia", "Asia", "R", "sea", "Khmer", ".kh", "+855", ["Khmer script", "Tuk-tuks and dusty red side roads"]],
+    ["Laos", "Asia", "R", "sea", "Lao", ".la", "+856", ["Lao script — rounder than Thai", "French colonial shophouses"]],
+    ["Vietnam", "Asia", "R", "latin", "Vietnamese", ".vn", "+84", ["Latin letters with stacked accents (ư, ơ, ế, ộ…)", "Scooters everywhere; tall, narrow “tube houses”"]],
+    ["Philippines", "Asia", "R", "latin", "Filipino and English", ".ph", "+63", ["Colourful jeepneys", "English signs, often mixed with Filipino"]],
+    ["Indonesia", "Asia", "L", "latin", "Indonesian", ".id", "+62", ["“Jalan” (road) on signs", "Scooters everywhere; red-tiled roofs"]],
+    ["India", "Asia", "L", "southasian latin", "Hindi, English and regional languages", ".in", "+91", ["Devanagari plus a regional script (e.g. Kannada, Malayalam)", "Auto-rickshaws and very busy streets"]],
+    ["Sri Lanka", "Asia", "L", "southasian latin", "Sinhala and Tamil", ".lk", "+94", ["Signs in Sinhala, Tamil and English", "Tuk-tuks everywhere"]],
+    ["Mongolia", "Asia", "R", "cyrillic", "Mongolian", ".mn", "+976", ["Cyrillic with the extra letters ө and ү", "Treeless steppe; gers (yurts) at the city edges"]],
+    ["Kyrgyzstan", "Asia", "R", "cyrillic", "Kyrgyz and Russian", ".kg", "+996", ["Cyrillic with ң, ө and ү", "Snowy mountains on the horizon"]],
+    ["Kazakhstan", "Asia", "R", "cyrillic", "Kazakh and Russian", ".kz", "+7", ["Cyrillic plus Kazakh letters like ә, ғ and қ", "Very wide boulevards and flat steppe"]],
+    // Africa
+    ["South Africa", "Africa", "L", "latin", "English, Afrikaans and others", ".za", "+27", ["Yellow edge lines on roads", "Signs in English and Afrikaans", "Walls topped with electric fencing"]],
+    ["Botswana", "Africa", "L", "latin", "English and Setswana", ".bw", "+267", ["Flat, dry savanna and sandy verges", "English signs with Setswana place names"]],
+    ["Lesotho", "Africa", "L", "latin", "Sesotho and English", ".ls", "+266", ["Mountains everywhere — the whole country is highland", "Round stone huts with thatched roofs"]],
+    ["Eswatini", "Africa", "L", "latin", "siSwati and English", ".sz", "+268", ["Green hills and forestry plantations", "English signs with siSwati place names"]],
+    ["Kenya", "Africa", "L", "latin", "English and Swahili", ".ke", "+254", ["Yellow rear number plate, white front plate", "Matatu minibuses"]],
+    ["Uganda", "Africa", "L", "latin", "English", ".ug", "+256", ["Red soil and lush green vegetation", "Boda-boda motorbike taxis"]],
+    ["Rwanda", "Africa", "R", "latin", "Kinyarwanda, English and French", ".rw", "+250", ["Drives on the right, unlike neighbours Uganda and Tanzania", "Very hilly and very tidy"]],
+    ["Ghana", "Africa", "R", "latin", "English", ".gh", "+233", ["English signs", "Red laterite soil and roadside kiosks"]],
+    ["Nigeria", "Africa", "R", "latin", "English", ".ng", "+234", ["English signs", "Yellow minibuses (danfos) in Lagos"]],
+    ["Senegal", "Africa", "R", "latin", "French and Wolof", ".sn", "+221", ["French signs", "Sandy streets and baobab trees"]],
+    ["Tunisia", "Africa", "R", "arabic latin", "Arabic and French", ".tn", "+216", ["Arabic and French signs", "White buildings with blue doors and shutters"]],
+    ["Madagascar", "Africa", "R", "latin", "Malagasy and French", ".mg", "+261", ["Long Malagasy words full of vowels", "Red earth and rice paddies"]],
+    ["Réunion", "Africa", "R", "latin", "French", ".re", "+262", ["French road signs and EU plates — but tropical", "Steep volcanic mountains"]],
+    // Oceania
+    ["Australia", "Oceania", "L", "latin", "English", ".au", "+61", ["Eucalyptus trees; red soil inland", "Yellow diamond-shaped warning signs"]],
+    ["New Zealand", "Oceania", "L", "latin", "English and Māori", ".nz", "+64", ["Green hills, sheep and tree ferns", "Māori place names with lots of “wh” and “ng”"]],
+    ["Fiji", "Oceania", "L", "latin", "English and Fijian", ".fj", "+679", ["English signs", "Tropical island landscape"]],
+    ["French Polynesia", "Oceania", "R", "latin", "French and Tahitian", ".pf", "+689", ["French signs", "Volcanic islands and turquoise lagoons"]],
+    ["Guam", "Oceania", "R", "latin", "English and Chamorro", ".gu", "+1", ["US-style signs and plates", "Tropical island with Chamorro place names"]],
+  ];
+  const COUNTRIES = {};
+  for (const [name, region, d, sc, lang, tld, tel, clues] of COUNTRY_DATA) {
+    COUNTRIES[name] = { name, region, d, sc: sc.split(" "), lang, tld, tel, clues };
+  }
+  const PLACES = LOCATIONS.map(([name, lat, lng]) => ({ name, lat, lng, country: name.split(", ").pop() }))
+    .filter((p) => COUNTRIES[p.country]);
+  const PLACES_BY_COUNTRY = {};
+  for (const p of PLACES) (PLACES_BY_COUNTRY[p.country] ||= []).push(p);
+
   const ROUNDS = 5;
   const MAX_POINTS = 5000;
+  const HINT_COST = 500;
 
   const $ = (id) => document.getElementById(id);
   const els = {
     sv: $("sv"), hud: $("hud"), round: $("hud-round"), score: $("hud-score"),
+    hintBtn: $("btn-hint"), hints: $("hints"),
     panel: $("guess-panel"), guessBtn: $("btn-guess"), toggle: $("map-toggle"),
-    start: $("start"), result: $("result"), final: $("final"),
-    resPoints: $("res-points"), resPlace: $("res-place"), resDist: $("res-dist"), resBar: $("res-bar"),
+    quiz: $("quiz-panel"), quizOptions: $("quiz-options"), check: $("check"),
+    start: $("start"), result: $("result"), final: $("final"), stats: $("stats"), guide: $("guide"),
+    resPoints: $("res-points"), resPenalty: $("res-penalty"), resPlace: $("res-place"), resDist: $("res-dist"),
+    resLegend: $("res-legend"), resBar: $("res-bar"), resChecks: $("res-checks"), resClues: $("res-clues"),
     nextBtn: $("btn-next"), finalTotal: $("final-total"), finalVerdict: $("final-verdict"), finalRows: $("final-rows"),
   };
 
-  // ---------- Location deck (shuffled, no repeats until exhausted) ----------
-  let deck = [];
+  // Small DOM builder: h("div", { class: "x" }, "text", child, [more children])
+  function h(tag, props, ...kids) {
+    const e = document.createElement(tag);
+    for (const [k, v] of Object.entries(props || {})) {
+      if (k === "class") e.className = v;
+      else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+      else if (v != null && v !== false) e.setAttribute(k, v === true ? "" : v);
+    }
+    for (const kid of kids.flat(Infinity)) {
+      if (kid == null || kid === false) continue;
+      e.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+    }
+    return e;
+  }
+
+  // ---------- Saved settings and learning stats (this device only) ----------
+  function load(key, fallback) {
+    try { const v = JSON.parse(localStorage.getItem(key)); return v ? Object.assign(fallback, v) : fallback; }
+    catch { return fallback; }
+  }
+  function save(key, value) { try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* private mode */ } }
+
+  const SETTINGS_KEY = "woe-settings-v1";
+  const STATS_KEY = "woe-stats-v1";
+  const settings = load(SETTINGS_KEY, { mode: "classic", selfCheck: true });
+  const blankStats = () => ({
+    rounds: 0, games: 0, best: 0, countries: {}, confused: {},
+    checks: { drive: { n: 0, ok: 0 }, script: { n: 0, ok: 0 }, hemi: { n: 0, ok: 0 } },
+  });
+  let stats = load(STATS_KEY, blankStats());
+
+  // ---------- Picking locations ----------
   function shuffle(a) {
     for (let i = a.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
@@ -636,29 +949,84 @@
     }
     return a;
   }
+  const pickRandom = (a) => a[Math.floor(Math.random() * a.length)];
+
+  let deck = [];
+  function drawShuffled() {
+    if (!deck.length) deck = shuffle(PLACES.slice());
+    return deck.pop();
+  }
+  // Unseen countries and low-scoring ones get picked more often
+  function countryWeight(name) {
+    const s = stats.countries[name];
+    if (!s || !s.n) return 2.5;
+    return 0.3 + 3 * (1 - s.pts / s.n / MAX_POINTS) + 2 * (1 - s.hits / s.n);
+  }
+  function drawWeakSpot() {
+    const pool = Object.keys(PLACES_BY_COUNTRY)
+      .map((c) => ({ c, places: PLACES_BY_COUNTRY[c].filter((p) => !state.used.has(p.name)) }))
+      .filter((x) => x.places.length);
+    const weights = pool.map((x) => countryWeight(x.c));
+    let r = Math.random() * weights.reduce((a, b) => a + b, 0);
+    for (let i = 0; i < pool.length; i++) {
+      if ((r -= weights[i]) <= 0) return pickRandom(pool[i].places);
+    }
+    return pickRandom(pool[pool.length - 1].places);
+  }
   function drawLocation() {
-    if (!deck.length) deck = shuffle(LOCATIONS.slice());
-    const [name, lat, lng] = deck.pop();
-    return { name, lat, lng, heading: Math.floor(Math.random() * 360) };
+    let p = settings.mode === "weak" ? drawWeakSpot() : drawShuffled();
+    if (state.used.has(p.name)) p = drawShuffled();
+    state.used.add(p.name);
+    return { ...p, heading: Math.floor(Math.random() * 360) };
   }
 
   // ---------- Geo + scoring ----------
   function haversineKm(a, b) {
     const R = 6371, rad = Math.PI / 180;
     const dLat = (b.lat - a.lat) * rad, dLng = (b.lng - a.lng) * rad;
-    const h = Math.sin(dLat / 2) ** 2 +
+    const x = Math.sin(dLat / 2) ** 2 +
       Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLng / 2) ** 2;
-    return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+    return 2 * R * Math.asin(Math.min(1, Math.sqrt(x)));
   }
   function scoreFor(km) {
     if (km < 0.1) return MAX_POINTS;
     return Math.round(MAX_POINTS * Math.exp(-km / 1500));
   }
+  // Which country did a pin land in? Approximated by the nearest place in our list.
+  function nearestCountry(pt) {
+    let best = null, bestKm = Infinity;
+    for (const p of PLACES) {
+      const km = haversineKm(pt, p);
+      if (km < bestKm) { bestKm = km; best = p; }
+    }
+    return bestKm < 1000 ? best.country : null;
+  }
   function fmtDist(km) {
     if (km < 1) return Math.round(km * 1000) + " m";
     return (km < 10 ? km.toFixed(1) : Math.round(km).toLocaleString("en-US")) + " km";
   }
-  const fmtNum = (n) => n.toLocaleString("en-US");
+  const fmtNum = (n) => Math.round(n).toLocaleString("en-US");
+  const pct = (a, b) => (b ? Math.round(a / b * 100) + "%" : "–");
+
+  // ---------- Clue cards ----------
+  function sunClue(lat) {
+    if (lat > 23.44) return "Northern hemisphere: the midday sun is to the south";
+    if (lat < -23.44) return "Southern hemisphere: the midday sun is to the north";
+    return `In the tropics (${lat >= 0 ? "north" : "south"} of the equator): the sun can be north or south, often high overhead`;
+  }
+  function clueCard(c, lat, title) {
+    const rows = [
+      ["Traffic", c.d === "L" ? "Drives on the left" : "Drives on the right"],
+      ["Writing", c.sc.map((s) => SCRIPTS[s]).join(" + ")],
+      ["Language", c.lang],
+      ["On signs", `${c.tld} websites · ${c.tel} phone numbers`],
+    ];
+    if (lat != null) rows.push(["Sun", sunClue(lat)]);
+    return h("div", { class: "clues" },
+      title ? h("h3", null, title) : null,
+      h("dl", null, rows.map(([k, v]) => [h("dt", null, k), h("dd", null, v)])),
+      h("ul", null, c.clues.map((t) => h("li", null, t))));
+  }
 
   // ---------- Maps ----------
   // OpenStreetMap standard tiles: free, no API key (dark mode is a CSS filter)
@@ -686,8 +1054,8 @@
 
   // Smallest zoom at which the world is at least as tall as the map
   function worldZoom(map) {
-    const h = map.getSize().y || 256;
-    return Math.max(1, Math.ceil(Math.log2(h / 256)));
+    const height = map.getSize().y || 256;
+    return Math.max(1, Math.ceil(Math.log2(height / 256)));
   }
   function showWholeWorld() {
     guessMap.invalidateSize({ pan: false });
@@ -710,9 +1078,11 @@
   panelObserver.observe($("guess-map"));
 
   // ---------- Game state ----------
-  let state = null;
+  // phase: "play" (looking around) → "check" (self-check sheet) → "result"
+  let state = { used: new Set() };
 
   function show(el, on) { el.classList.toggle("hidden", !on); }
+  const isQuiz = () => state.mode === "quiz";
 
   function loadStreetView(loc) {
     const src = `https://maps.google.com/maps?layer=c&cbll=${loc.lat},${loc.lng}` +
@@ -734,67 +1104,211 @@
     showWholeWorld();
   }
 
+  // ---------- Hints ----------
+  function hintList(loc) {
+    const c = COUNTRIES[loc.country];
+    return [
+      ["Hemisphere", loc.lat >= 0 ? "Northern" : "Southern"],
+      ["Traffic", c.d === "L" ? "Drives on the left" : "Drives on the right"],
+      ["Language", c.lang],
+      ["Region", c.region],
+    ];
+  }
+  function renderHints() {
+    const list = hintList(state.current);
+    els.hints.replaceChildren(...list.slice(0, state.hints).map(([k, v]) => h("span", null, h("small", null, k), v)));
+    const left = list.length - state.hints;
+    els.hintBtn.disabled = left === 0;
+    els.hintBtn.textContent = left ? `Hint · −${HINT_COST}` : "No hints left";
+  }
+  function useHint() {
+    if (state.phase !== "play" || state.hints >= hintList(state.current).length) return;
+    state.hints++;
+    renderHints();
+  }
+
+  // ---------- Country quiz ----------
+  function quizChoices(answer) {
+    const others = Object.keys(PLACES_BY_COUNTRY).filter((n) => n !== answer);
+    const region = COUNTRIES[answer].region;
+    const near = shuffle(others.filter((n) => COUNTRIES[n].region === region));
+    const far = shuffle(others.filter((n) => COUNTRIES[n].region !== region));
+    // Two look-alikes from the same region make it a real test
+    return shuffle([answer, ...near.slice(0, 2), ...far].slice(0, 4));
+  }
+  function renderQuiz() {
+    els.quizOptions.replaceChildren(...quizChoices(state.current.country).map((name) =>
+      h("button", { onclick: () => submitAnswer({ type: "quiz", country: name }) }, name)));
+  }
+
+  // ---------- Rounds ----------
+  function setLocation(loc) {
+    state.current = loc;
+    state.hints = 0;
+    loadStreetView(loc);
+    renderHints();
+    if (isQuiz()) renderQuiz();
+  }
+
   function startRound() {
-    state.current = drawLocation();
-    loadStreetView(state.current);
+    state.phase = "play";
+    setLocation(drawLocation());
     resetGuessMap();
     updateHud();
-    show(els.result, false);
-    show(els.final, false);
+    for (const el of [els.result, els.final, els.check, els.start]) show(el, false);
     show(els.hud, true);
-    show(els.panel, true);
-    setTimeout(showWholeWorld, 50);
+    show(els.panel, !isQuiz());
+    show(els.quiz, isQuiz());
+    if (!isQuiz()) setTimeout(showWholeWorld, 50);
   }
 
   function newGame() {
-    state = { round: 0, total: 0, history: [], current: null };
-    show(els.start, false);
+    state = { mode: settings.mode, round: 0, total: 0, history: [], used: state.used || new Set(), current: null };
+    if (state.used.size > PLACES.length - ROUNDS * 3) state.used = new Set();
     startRound();
   }
 
-  function submitGuess() {
+  // ---------- Guess → self-check → reveal ----------
+  function onGuess() {
     if (!guessMarker) return;
     const g = guessMarker.getLatLng().wrap();
-    const guess = { lat: g.lat, lng: g.lng };
-    const real = state.current;
-    const km = haversineKm(guess, real);
-    const pts = scoreFor(km);
-    state.total += pts;
-    state.history.push({ name: real.name, km, pts });
-    updateHud();
+    submitAnswer({ type: "pin", lat: g.lat, lng: g.lng });
+  }
 
-    // Result screen
+  function submitAnswer(answer) {
+    if (state.phase !== "play") return;
+    state.answer = answer;
     show(els.panel, false);
+    show(els.quiz, false);
+    if (settings.selfCheck) openCheck();
+    else reveal();
+  }
+
+  const CHECK_OPTIONS = {
+    drive: [["L", "Left"], ["R", "Right"]],
+    script: Object.entries(SCRIPTS),
+    hemi: [["N", "Northern"], ["S", "Southern"]],
+  };
+  function openCheck() {
+    state.phase = "check";
+    state.check = { drive: null, script: null, hemi: null };
+    for (const box of els.check.querySelectorAll(".chips[data-q]")) {
+      const q = box.dataset.q;
+      box.replaceChildren(...CHECK_OPTIONS[q].map(([val, label]) => {
+        const chip = h("button", { class: "chip", "aria-pressed": "false" }, label);
+        chip.addEventListener("click", () => {
+          state.check[q] = state.check[q] === val ? null : val;
+          for (const other of box.children) other.setAttribute("aria-pressed", "false");
+          chip.setAttribute("aria-pressed", String(state.check[q] === val));
+        });
+        return chip;
+      }));
+    }
+    show(els.check, true);
+  }
+
+  function gradeChecks(loc) {
+    const c = COUNTRIES[loc.country];
+    const truth = {
+      drive: [c.d, c.d === "L" ? "Left" : "Right"],
+      script: [c.sc, c.sc.map((s) => SCRIPTS[s]).join(" + ")],
+      hemi: [loc.lat >= 0 ? "N" : "S", loc.lat >= 0 ? "Northern" : "Southern"],
+    };
+    const labels = { drive: "Driving side", script: "Writing", hemi: "Hemisphere" };
+    return Object.keys(labels).map((q) => {
+      const answer = state.check && state.check[q];
+      if (!answer) return { q, label: labels[q], skipped: true, truth: truth[q][1] };
+      const ok = Array.isArray(truth[q][0]) ? truth[q][0].includes(answer) : truth[q][0] === answer;
+      return { q, label: labels[q], ok, truth: truth[q][1] };
+    });
+  }
+
+  function reveal() {
+    state.phase = "result";
+    show(els.check, false);
+    const loc = state.current;
+    const c = COUNTRIES[loc.country];
+    const a = state.answer;
+
+    let base, km = null, guessed;
+    if (a.type === "pin") {
+      km = haversineKm(a, loc);
+      base = scoreFor(km);
+      guessed = nearestCountry(a);
+    } else {
+      guessed = a.country;
+      base = guessed === loc.country ? MAX_POINTS : 0;
+    }
+    const penalty = Math.min(base, state.hints * HINT_COST);
+    const pts = base - penalty;
+    const hit = guessed === loc.country;
+    const checks = settings.selfCheck ? gradeChecks(loc) : [];
+
+    state.total += pts;
+    state.history.push({ name: loc.name, km, pts, hit, guessed, type: a.type });
+    updateHud();
+    recordRound(loc.country, pts, hit, guessed, checks);
+
+    // Result card
     show(els.result, true);
     els.sv.src = "about:blank";
     els.resPoints.textContent = fmtNum(pts);
-    els.resPlace.textContent = real.name;
-    els.resDist.textContent = km < 0.1
-      ? "Spot on — less than 100 m away!"
-      : `Your guess was ${fmtDist(km)} away.`;
+    els.resPenalty.textContent = state.hints ? `−${fmtNum(penalty)} for ${state.hints} hint${state.hints > 1 ? "s" : ""}` : "";
+    els.resPlace.textContent = loc.name;
+    if (a.type === "pin") {
+      els.resDist.textContent = (km < 0.1 ? "Spot on — less than 100 m away!" : `Your guess was ${fmtDist(km)} away.`) +
+        (hit ? " Right country!" : guessed ? ` You were in ${guessed}.` : "");
+    } else {
+      els.resDist.textContent = hit ? "You picked the right country!" : `You picked ${guessed}.`;
+    }
+    show(els.resLegend, a.type === "pin");
     els.resBar.style.width = "0%";
+    els.resChecks.replaceChildren(...checks.map((r) =>
+      r.skipped
+        ? h("span", { class: "skip" }, `${r.label}: skipped (${r.truth})`)
+        : h("span", { class: r.ok ? "ok" : "bad" }, h("b", null, r.ok ? "✓ " : "✗ "), r.label, r.ok ? "" : ` — it was ${r.truth}`)));
+    els.resClues.replaceChildren(clueCard(c, loc.lat, `How to spot ${c.name}`));
+    els.result.querySelector(".result-card").scrollTop = 0;
     els.nextBtn.textContent = state.round + 1 >= ROUNDS ? "See final score" : "Next round";
 
+    // Result map
     resultLayer.clearLayers();
-    // Draw the line along the shorter way around the globe
-    let gLng = guess.lng;
-    if (gLng - real.lng > 180) gLng -= 360;
-    else if (real.lng - gLng > 180) gLng += 360;
-    const gLL = L.latLng(guess.lat, gLng), rLL = L.latLng(real.lat, real.lng);
-    L.polyline([gLL, rLL], { color: "#F2A33A", weight: 3, dashArray: "8 10", opacity: 0.95 }).addTo(resultLayer);
-    L.marker(gLL, { icon: pinIcon("guess"), keyboard: false }).addTo(resultLayer);
+    const rLL = L.latLng(loc.lat, loc.lng);
+    let gLL = null;
+    if (a.type === "pin") {
+      // Draw the line along the shorter way around the globe
+      let gLng = a.lng;
+      if (gLng - loc.lng > 180) gLng -= 360;
+      else if (loc.lng - gLng > 180) gLng += 360;
+      gLL = L.latLng(a.lat, gLng);
+      L.polyline([gLL, rLL], { color: "#F2A33A", weight: 3, dashArray: "8 10", opacity: 0.95 }).addTo(resultLayer);
+      L.marker(gLL, { icon: pinIcon("guess"), keyboard: false }).addTo(resultLayer);
+    }
     L.marker(rLL, { icon: pinIcon("real"), keyboard: false }).addTo(resultLayer);
 
     requestAnimationFrame(() => {
       resultMap.invalidateSize();
       resultMap.setMinZoom(worldZoom(resultMap));
-      const card = document.querySelector(".result-card");
-      const bottomPad = (card ? card.offsetHeight : 200) + 40;
-      resultMap.fitBounds(L.latLngBounds([gLL, rLL]), {
-        paddingTopLeft: [50, 60], paddingBottomRight: [50, bottomPad], maxZoom: 14, animate: false,
-      });
+      if (gLL) resultMap.fitBounds(L.latLngBounds([gLL, rLL]), { padding: [50, 50], maxZoom: 14, animate: false });
+      else resultMap.setView(rLL, 5, { animate: false });
       setTimeout(() => { els.resBar.style.width = (pts / MAX_POINTS * 100).toFixed(1) + "%"; }, 80);
     });
+  }
+
+  function recordRound(country, pts, hit, guessed, checks) {
+    const s = (stats.countries[country] ||= { n: 0, pts: 0, hits: 0 });
+    s.n++; s.pts += pts; if (hit) s.hits++;
+    if (!hit && guessed) {
+      const key = `${country}|${guessed}`;
+      stats.confused[key] = (stats.confused[key] || 0) + 1;
+    }
+    for (const r of checks) {
+      if (r.skipped) continue;
+      stats.checks[r.q].n++;
+      if (r.ok) stats.checks[r.q].ok++;
+    }
+    stats.rounds++;
+    save(STATS_KEY, stats);
   }
 
   function nextRound() {
@@ -803,34 +1317,30 @@
     startRound();
   }
 
-  function verdictFor(pct) {
-    if (pct >= 90) return "Human GPS. Are you sure you didn't peek?";
-    if (pct >= 75) return "Seasoned globetrotter.";
-    if (pct >= 55) return "Well-traveled — nicely done.";
-    if (pct >= 35) return "Getting your bearings.";
-    if (pct >= 15) return "Scenic route enthusiast.";
+  function verdictFor(p) {
+    if (p >= 90) return "Human GPS. Are you sure you didn't peek?";
+    if (p >= 75) return "Seasoned globetrotter.";
+    if (p >= 55) return "Well-traveled — nicely done.";
+    if (p >= 35) return "Getting your bearings.";
+    if (p >= 15) return "Scenic route enthusiast.";
     return "Lost, but having a great time.";
   }
 
   function showFinal() {
-    show(els.result, false);
-    show(els.hud, false);
-    show(els.panel, false);
-    const max = ROUNDS * MAX_POINTS;
+    state.phase = "final";
+    for (const el of [els.result, els.hud, els.panel, els.quiz]) show(el, false);
+    stats.games++;
+    stats.best = Math.max(stats.best, state.total);
+    save(STATS_KEY, stats);
+
     els.finalTotal.textContent = fmtNum(state.total);
-    els.finalVerdict.textContent = verdictFor(state.total / max * 100);
-    els.finalRows.innerHTML = "";
-    state.history.forEach((h, i) => {
-      const tr = document.createElement("tr");
-      const cells = [String(i + 1), h.name, fmtDist(h.km), fmtNum(h.pts)];
-      cells.forEach((text, c) => {
-        const td = document.createElement("td");
-        td.textContent = text;
-        if (c >= 2) td.className = "num" + (c === 3 ? " pts" : "");
-        tr.appendChild(td);
-      });
-      els.finalRows.appendChild(tr);
-    });
+    els.finalVerdict.textContent = verdictFor(state.total / (ROUNDS * MAX_POINTS) * 100);
+    els.finalRows.replaceChildren(...state.history.map((r, i) => {
+      const result = r.type === "pin"
+        ? h("td", { class: "num" }, fmtDist(r.km), " ", h("span", { class: r.hit ? "yes" : "no", title: r.hit ? "Right country" : "Wrong country" }, r.hit ? "✓" : "✗"))
+        : h("td", { class: "num" }, h("span", { class: r.hit ? "yes" : "no" }, r.hit ? "✓ Right" : `✗ ${r.guessed}`));
+      return h("tr", null, h("td", null, i + 1), h("td", null, r.name), result, h("td", { class: "num pts" }, fmtNum(r.pts)));
+    }));
     show(els.final, true);
   }
 
@@ -841,24 +1351,161 @@
     if (open) setTimeout(() => (guessMarker ? guessMap.invalidateSize() : showWholeWorld()), 30);
   }
 
+  // ---------- Start screen ----------
+  function renderModes() {
+    for (const b of document.querySelectorAll(".mode")) {
+      b.setAttribute("aria-checked", String(b.dataset.mode === settings.mode));
+    }
+    $("opt-check").checked = settings.selfCheck;
+  }
+  for (const b of document.querySelectorAll(".mode")) {
+    b.addEventListener("click", () => { settings.mode = b.dataset.mode; save(SETTINGS_KEY, settings); renderModes(); });
+  }
+  $("opt-check").addEventListener("change", (e) => { settings.selfCheck = e.target.checked; save(SETTINGS_KEY, settings); });
+
+  // ---------- Pages (stats, field guide) ----------
+  let returnTo = els.start;
+  function openPage(page) {
+    returnTo = [els.start, els.final].find((el) => !el.classList.contains("hidden")) || els.start;
+    show(returnTo, false);
+    show(page, true);
+    page.scrollTop = 0;
+  }
+  for (const btn of document.querySelectorAll("[data-close]")) {
+    btn.addEventListener("click", () => {
+      show(btn.closest(".page"), false);
+      show(returnTo, true);
+    });
+  }
+
+  function meter(label, ok, n) {
+    return h("div", { class: "meter" },
+      h("span", null, label),
+      h("div", { class: "bar" }, h("div", { style: `width:${n ? ok / n * 100 : 0}%` })),
+      h("span", { class: "num" }, n ? `${pct(ok, n)} of ${n}` : "–"));
+  }
+
+  function renderStats() {
+    const body = $("stats-body");
+    if (!stats.rounds) {
+      body.replaceChildren(h("p", { class: "empty" }, "No rounds played yet. Play a game and your accuracy by country and region will appear here."));
+      return;
+    }
+    const entries = Object.entries(stats.countries);
+    const hits = entries.reduce((a, [, s]) => a + s.hits, 0);
+    const pts = entries.reduce((a, [, s]) => a + s.pts, 0);
+
+    const regions = REGIONS.map((r) => {
+      const rows = entries.filter(([c]) => COUNTRIES[c] && COUNTRIES[c].region === r).map(([, s]) => s);
+      return { r, n: rows.reduce((a, s) => a + s.n, 0), hits: rows.reduce((a, s) => a + s.hits, 0), pts: rows.reduce((a, s) => a + s.pts, 0) };
+    }).filter((x) => x.n);
+
+    const weakest = entries.map(([c, s]) => ({ c, ...s, avg: s.pts / s.n }))
+      .sort((a, b) => a.avg - b.avg || b.n - a.n).slice(0, 10);
+
+    const confused = Object.entries(stats.confused).sort((a, b) => b[1] - a[1]).slice(0, 8);
+    const ch = stats.checks;
+
+    body.replaceChildren(h("div", null,
+      h("div", { class: "tiles" },
+        h("div", { class: "tile" }, h("div", { class: "v" }, fmtNum(stats.rounds)), h("div", { class: "k" }, "Rounds played")),
+        h("div", { class: "tile" }, h("div", { class: "v" }, pct(hits, stats.rounds)), h("div", { class: "k" }, "Right country")),
+        h("div", { class: "tile" }, h("div", { class: "v" }, fmtNum(pts / stats.rounds)), h("div", { class: "k" }, "Average points per round")),
+        h("div", { class: "tile" }, h("div", { class: "v" }, fmtNum(stats.best)), h("div", { class: "k" }, "Best game"))),
+
+      h("h2", null, "Self-check accuracy"),
+      ch.drive.n + ch.script.n + ch.hemi.n
+        ? [meter("Driving side", ch.drive.ok, ch.drive.n), meter("Writing system", ch.script.ok, ch.script.n), meter("Hemisphere", ch.hemi.ok, ch.hemi.n)]
+        : h("p", { class: "empty" }, "Turn on “Self-check before each reveal” to see how well you read the clues."),
+
+      h("h2", null, "By region"),
+      h("table", null,
+        h("thead", null, h("tr", null, h("th", null, "Region"), h("th", { class: "num" }, "Rounds"), h("th", { class: "num" }, "Right country"), h("th", { class: "num" }, "Avg points"))),
+        h("tbody", null, regions.map((x) => h("tr", null,
+          h("td", null, x.r), h("td", { class: "num" }, x.n), h("td", { class: "num" }, pct(x.hits, x.n)), h("td", { class: "num pts" }, fmtNum(x.pts / x.n)))))),
+
+      h("h2", null, "Countries to practise"),
+      h("table", null,
+        h("thead", null, h("tr", null, h("th", null, "Country"), h("th", { class: "num" }, "Rounds"), h("th", { class: "num" }, "Right"), h("th", { class: "num" }, "Avg points"))),
+        h("tbody", null, weakest.map((x) => h("tr", null,
+          h("td", null, x.c), h("td", { class: "num" }, x.n), h("td", { class: "num" }, pct(x.hits, x.n)), h("td", { class: "num pts" }, fmtNum(x.avg)))))),
+
+      h("h2", null, "Most confused"),
+      confused.length
+        ? h("table", null,
+            h("thead", null, h("tr", null, h("th", null, "It was"), h("th", null, "You guessed"), h("th", { class: "num" }, "Times"))),
+            h("tbody", null, confused.map(([key, n]) => {
+              const [real, guess] = key.split("|");
+              return h("tr", null, h("td", null, real), h("td", null, guess), h("td", { class: "num pts" }, n));
+            })))
+        : h("p", { class: "empty" }, "No mix-ups yet."),
+      h("p", { class: "empty" }, "For map guesses, the country you guessed is taken from the nearest place in the game's list, so border guesses can occasionally be misread."),
+
+      h("div", { class: "page-actions" },
+        h("button", { onclick: () => { settings.mode = "weak"; save(SETTINGS_KEY, settings); renderModes(); show(els.stats, false); newGame(); } }, "Practise weak spots"),
+        h("button", { class: "ghost", onclick: () => {
+          if (!confirm("Reset all your stats? This can't be undone.")) return;
+          stats = blankStats(); save(STATS_KEY, stats); renderStats();
+        } }, "Reset stats"))));
+  }
+
+  // Field guide: every country's clue card, searchable and filterable by region
+  let guideRegion = "All";
+  const guideCards = Object.values(COUNTRIES).filter((c) => PLACES_BY_COUNTRY[c.name]).map((c) => {
+    const card = h("article", { class: "ccard" },
+      h("h3", null, c.name),
+      h("div", { class: "meta" }, c.region, h("span", { class: "your" })),
+      clueCard(c));
+    return { c, card, text: card.textContent.toLowerCase() };
+  });
+  $("guide-list").replaceChildren(...guideCards.map((g) => g.card));
+  $("guide-regions").replaceChildren(...["All", ...REGIONS].map((r) =>
+    h("button", { class: "chip", "aria-pressed": String(r === guideRegion), onclick: (e) => {
+      guideRegion = r;
+      for (const b of $("guide-regions").children) b.setAttribute("aria-pressed", String(b === e.currentTarget));
+      filterGuide();
+    } }, r)));
+  function filterGuide() {
+    const q = $("guide-search").value.trim().toLowerCase();
+    for (const g of guideCards) {
+      show(g.card, (guideRegion === "All" || g.c.region === guideRegion) && (!q || g.text.includes(q)));
+    }
+  }
+  function renderGuide() {
+    for (const g of guideCards) {
+      const s = stats.countries[g.c.name];
+      g.card.querySelector(".your").textContent = s ? ` · you: ${pct(s.hits, s.n)} right in ${s.n} round${s.n > 1 ? "s" : ""}` : "";
+    }
+    filterGuide();
+  }
+  $("guide-search").addEventListener("input", filterGuide);
+
   // ---------- Wiring ----------
   $("btn-start").addEventListener("click", newGame);
   $("btn-again").addEventListener("click", newGame);
-  els.guessBtn.addEventListener("click", submitGuess);
+  $("btn-menu").addEventListener("click", () => { show(els.final, false); renderModes(); show(els.start, true); });
+  $("btn-stats").addEventListener("click", () => { renderStats(); openPage(els.stats); });
+  $("btn-final-stats").addEventListener("click", () => { renderStats(); openPage(els.stats); });
+  $("btn-guide").addEventListener("click", () => { renderGuide(); openPage(els.guide); });
+  $("btn-reveal").addEventListener("click", reveal);
+  els.guessBtn.addEventListener("click", onGuess);
+  els.hintBtn.addEventListener("click", useHint);
   els.nextBtn.addEventListener("click", nextRound);
   els.toggle.addEventListener("click", () => setMapOpen(!els.panel.classList.contains("open")));
-  $("btn-back").addEventListener("click", () => state && loadStreetView(state.current));
+  $("btn-back").addEventListener("click", () => state.current && loadStreetView(state.current));
   $("btn-skip").addEventListener("click", () => {
-    if (!state) return;
-    state.current = drawLocation();
-    loadStreetView(state.current);
+    if (state.phase !== "play") return;
+    setLocation(drawLocation());
   });
   document.addEventListener("keydown", (e) => {
-    if (e.key !== "Enter" && e.key !== " ") return;
-    if (e.target.tagName === "BUTTON") return;
-    if (!els.result.classList.contains("hidden")) { e.preventDefault(); nextRound(); }
-    else if (!els.panel.classList.contains("hidden") && guessMarker) { e.preventDefault(); submitGuess(); }
+    if (e.key !== "Enter") return;
+    if (e.target.tagName === "BUTTON" || e.target.tagName === "INPUT") return;
+    if (state.phase === "result") { e.preventDefault(); nextRound(); }
+    else if (state.phase === "check") { e.preventDefault(); reveal(); }
+    else if (state.phase === "play" && guessMarker && !isQuiz()) { e.preventDefault(); onGuess(); }
   });
+
+  renderModes();
 })();
 </script>
 </body>
