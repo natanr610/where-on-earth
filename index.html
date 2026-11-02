@@ -239,7 +239,7 @@
   <div id="guess-map"></div>
   <div class="guess-controls">
     <button class="ghost" id="map-toggle">Open map</button>
-    <button id="btn-guess" disabled>Guess</button>
+    <button id="btn-guess" class="hidden" disabled>Guess</button>
   </div>
 </div>
 
@@ -702,6 +702,7 @@
     if (guessMarker) guessMarker.setLatLng(ll);
     else guessMarker = L.marker(ll, { icon: pinIcon("guess"), keyboard: false }).addTo(guessMap);
     els.guessBtn.disabled = false;
+    els.guessBtn.classList.remove("hidden");
   });
 
   // Keep Leaflet sized correctly while the panel animates
@@ -728,6 +729,7 @@
   function resetGuessMap() {
     if (guessMarker) { guessMap.removeLayer(guessMarker); guessMarker = null; }
     els.guessBtn.disabled = true;
+    els.guessBtn.classList.add("hidden");
     setMapOpen(false);
     showWholeWorld();
   }
